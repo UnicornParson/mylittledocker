@@ -29,6 +29,9 @@ libmbedx509-0 \
 net-tools \
 git-all
 
+RUN apt update && apt install -y python3-psycopg2
+
+
 RUN cd /home && wget http://prdownloads.sourceforge.net/webadmin/webmin_1.990_all.deb && dpkg -i webmin_1.990_all.deb && service webmin start
 EXPOSE 10000
 RUN apt install -y python3-pip python3-dev && python3 -m pip install --upgrade pip
