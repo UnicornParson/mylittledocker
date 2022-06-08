@@ -45,7 +45,9 @@ jupyter_server \
 asyncio \
 tensorflow \
 pytesseract \
-opencv-python
+opencv-python \
+matplotlib \
+matplotlib-inline
 
 RUN jupyter notebook --generate-config && \
 jupyter nbextension install --py ipyparallel && \
