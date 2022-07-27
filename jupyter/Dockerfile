@@ -1,4 +1,4 @@
-FROM ubuntu:22.04
+FROM ubuntu:latest
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt update && apt upgrade -y
 RUN apt-get update && apt install -y linux-libc-dev
@@ -23,17 +23,10 @@ build-essential \
 libcap-dev \
 libxml2-dev \
 libssl-dev \
-libmbedcrypto3 \
-libmbedtls12 \
-libmbedx509-0 \
 net-tools \
-git-all
+git-all \
+python3-psycopg2
 
-RUN apt update && apt install -y python3-psycopg2
-
-
-RUN cd /home && wget http://prdownloads.sourceforge.net/webadmin/webmin_1.990_all.deb && dpkg -i webmin_1.990_all.deb && service webmin start
-EXPOSE 10000
 RUN apt install -y python3-pip python3-dev && python3 -m pip install --upgrade pip
 RUN python3 -m pip install \
 numpy \
