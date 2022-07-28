@@ -1,0 +1,13 @@
+version: '3.6'
+services:
+  jupyter:
+    restart: always
+    build:
+      context: '.'
+      dockerfile: "./Dockerfile"
+    ports:
+      - '8080:8000'
+      - '8081:8001'
+    volumes:
+      - '${JUPYTER_HOME}:/home/data'
+    shm_size: '256m'

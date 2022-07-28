@@ -1,8 +1,9 @@
 FROM ubuntu:latest
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt update && apt upgrade -y
-RUN apt-get update && apt install -y linux-libc-dev
-RUN apt install -y \
+RUN apt-get update && apt install -y linux-libc-dev software-properties-common
+RUN add-apt-repository ppa:deadsnakes/ppa
+RUN apt-get update && apt install -y \
 nano \
 htop \
 openssh-server \
@@ -27,8 +28,8 @@ net-tools \
 git-all \
 python3-psycopg2
 
-RUN apt install -y python3-pip python3-dev && python3 -m pip install --upgrade pip
-RUN python3 -m pip install \
+RUN apt install -y python3-pip python3.10-dev && python3.10 -m pip install --upgrade pip
+RUN python3.10 -m pip install \
 numpy \
 pandas \
 jupyter \
