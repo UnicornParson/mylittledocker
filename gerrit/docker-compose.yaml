@@ -1,0 +1,15 @@
+version: '3'
+
+services:
+  gerrit:
+    build:
+      context: '.'
+      dockerfile: "./Dockerfile"
+    volumes:
+       - ${GERRIT_HOME}/git:/var/gerrit/git
+       - ${GERRIT_HOME}/index:/var/gerrit/index
+       - ${GERRIT_HOME}/cache:/var/gerrit/cache
+    ports:
+       - "29418:29418"
+       - "8080:8080"
+
