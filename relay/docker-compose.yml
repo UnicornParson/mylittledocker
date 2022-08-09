@@ -1,0 +1,11 @@
+version: '3.6'
+services:
+  relay:
+    tty: true  
+    build:
+      context: '.'
+      dockerfile: "./Dockerfile"
+    ports:
+      - '9050:9050'
+      - '8118:8118'
+    shm_size: '256m'

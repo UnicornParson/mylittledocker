@@ -1,0 +1,29 @@
+ echo deb-src http://archive.ubuntu.com/ubuntu/ impish main restricted >> /etc/apt/sources.list && \
+echo deb-src http://archive.ubuntu.com/ubuntu/ impish-updates main restricted >> /etc/apt/sources.list && \
+echo deb-src http://archive.ubuntu.com/ubuntu/ impish universe >> /etc/apt/sources.list && \
+echo deb-src http://archive.ubuntu.com/ubuntu/ impish-updates universe >> /etc/apt/sources.list && \
+echo deb-src http://archive.ubuntu.com/ubuntu/ impish multiverse >> /etc/apt/sources.list && \
+echo deb-src http://archive.ubuntu.com/ubuntu/ impish-updates multiverse >> /etc/apt/sources.list \
+echo deb-src http://archive.ubuntu.com/ubuntu/ impish-backports main restricted universe multiverse >> /etc/apt/sources.list && \
+echo deb-src http://security.ubuntu.com/ubuntu/ impish-security main restricted >> /etc/apt/sources.list && \
+echo deb-src http://security.ubuntu.com/ubuntu/ impish-security universe >> /etc/apt/sources.list && \
+echo deb-src http://security.ubuntu.com/ubuntu/ impish-security multiverse >> /etc/apt/sources.list && \
+
+
+
+# RUN cd /home && mkdir sq_src && cd sq_src && wget http://www.squid-cache.org/Versions/v5/squid-5.4.1.tar.gz && tar -xvf squid-5.4.1.tar.gz
+#ENV CFLAGS=" -Dbind=SOCKSbind -Dbind=SOCKSbind -Dconnect=SOCKSconnect "
+#ENV CXXFLAGS=" -Dbind=SOCKSbindеба -Dbind=SOCKSbind -Dconnect=SOCKSconnect "
+#ENV LDADD=" -lsocks "
+
+# RUN cd /home/sq_src/squid-5.4.1 && ./configure \
+# --enable-async-io \
+# --prefix=/usr \
+# --localstatedir=/var \
+# --libexecdir=${prefix}/lib/squid \
+# --datadir=${prefix}/share/squid \
+# --sysconfdir=/etc/squid \
+# --with-default-user=proxy \
+# --with-logdir=/var/log/squid \
+# --with-pidfile=/var/run/squid.pid
+# RUN cd /home/sq_src/squid-5.4.1 && make && make install && echo done

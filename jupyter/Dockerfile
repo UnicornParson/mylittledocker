@@ -41,17 +41,23 @@ tensorflow \
 pytesseract \
 opencv-python \
 matplotlib \
-matplotlib-inline
+matplotlib-inline \
+line_profiler \
+youtube-dl \
+pymongo \
+reprint
 
 RUN jupyter notebook --generate-config && \
 jupyter nbextension install --py ipyparallel && \
 jupyter nbextension enable --py ipyparallel && \
 jupyter serverextension enable --py ipyparallel
 
-
+RUN ipython profile create
 COPY cfg/jupyter_notebook_config.py /root/.jupyter/jupyter_notebook_config.py
+COPY cfg/ipython_config.py /root/.ipython/profile_default/ipython_config.py
 # empty password
 COPY cfg/jupyter_notebook_config.json /root/.jupyter/jupyter_notebook_config.json
+
 COPY bootstrap.sh /home/bootstrap.sh
 EXPOSE 8000
 EXPOSE 8001

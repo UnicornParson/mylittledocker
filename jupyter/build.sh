@@ -1,2 +1,2 @@
 #!/bin/bash
-docker build --no-cache  -t jupyter .
+docker build --no-cache --progress plain -t jupyter .
