@@ -1,0 +1,50 @@
+version: "3.8"
+
+services:
+  minecraft-server:
+    image: itzg/minecraft-server:latest
+    container_name: minecraft-server
+    ports:
+      - 25565:25565
+    environment:
+      SERVER_NAME: "Dreamland18"
+      MOTD: "Forge Minecraft Server"
+      EULA: "TRUE"
+      TYPE: "FORGE"
+      VERSION: "1.18.2"
+      MODE: "survival"
+      MEMORY: "1G"
+      LEVEL_TYPE: "DEFAULT"
+      ENABLE_RCON: "true"
+      RCON_PASSWORD: password
+      RCON_PORT: 28016
+      SERVER_PORT: 25565
+      ENABLE_WHITELIST: "true"
+      WHITELIST: "${WHITELISTED_PLAYERS}"
+      OPS: "${OPS_PLAYERS}"
+      MAX_PLAYERS: 20
+      ANNOUNCE_PLAYER_ACHIEVEMENTS: "true"
+      SPAWN_ANIMALS: "true"
+      SPAWN_MONSTERS: "true"
+      PVP: "true"
+      LEVEL: "cold"
+      TZ: "Europe/Moscow"
+      GUI: "FALSE"
+      #MODS_FILE: /extras/mods.txt
+      REMOVE_OLD_MODS: "true"
+      ENABLE_AUTOPAUSE: "TRUE"
+      OVERRIDE_SERVER_PROPERTIES: "TRUE"
+      MAX_TICK_TIME: "-1"
+      FORGEVERSION: "40.1.69"
+      # More aggressive settings for demo purposes
+      AUTOPAUSE_TIMEOUT_INIT: "30"
+      AUTOPAUSE_TIMEOUT_EST: "10"
+    restart: unless-stopped
+    user: "${UID}:${GID}"
+    volumes:
+      - ${MINECRAFT_DATA}/data:/data
+      - ${MINECRAFT_DATA}/mods.txt:/extras/mods.txt:ro
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "1m"
