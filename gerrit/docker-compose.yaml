@@ -9,7 +9,9 @@ services:
        - ${GERRIT_HOME}/git:/var/gerrit/git
        - ${GERRIT_HOME}/index:/var/gerrit/index
        - ${GERRIT_HOME}/cache:/var/gerrit/cache
+       - ${GERRIT_HOME}/db:/var/gerrit/db
+       - ${GERRIT_HOME}/etc:/var/gerrit/etc
     ports:
        - "29418:29418"
-       - "8080:8080"
+       - "8180:8080"
 
