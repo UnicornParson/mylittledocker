@@ -26,7 +26,9 @@ libxml2-dev \
 libssl-dev \
 net-tools \
 git-all \
-python3-psycopg2
+python3-psycopg2 \
+pandoc texlive-xetex texlive-fonts-recommended texlive-plain-generic
+
 
 RUN apt install -y python3-pip python3.10-dev && python3.10 -m pip install --upgrade pip
 RUN python3.10 -m pip install \
@@ -45,7 +47,11 @@ matplotlib-inline \
 line_profiler \
 youtube-dl \
 pymongo \
-reprint
+reprint \
+line_profiler \
+ffmpeg-quality-metrics \
+nbconvert \
+pyppeteer
 
 RUN jupyter notebook --generate-config && \
 jupyter nbextension install --py ipyparallel && \
