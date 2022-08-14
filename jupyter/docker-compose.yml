@@ -7,7 +7,7 @@ services:
       dockerfile: "./Dockerfile"
     ports:
       - '8090:8000'
-      - '8081:8001'
+      - '8091:8001'
     volumes:
       - '${JUPYTER_HOME}:/home/data'
     shm_size: '256m'
