@@ -6,7 +6,7 @@ services:
       context: '.'
       dockerfile: "./Dockerfile"
     ports:
-      - '8080:8000'
+      - '8090:8000'
       - '8081:8001'
     volumes:
       - '${JUPYTER_HOME}:/home/data'
