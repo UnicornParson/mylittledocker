@@ -1,4 +1,4 @@
-FROM ubuntu:latest
+FROM ubuntu:22.04
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt update && apt upgrade -y
 RUN apt-get update && apt install -y linux-libc-dev software-properties-common
@@ -15,7 +15,7 @@ libauthen-pam-perl \
 libpam-runtime \
 libio-pty-perl
 
-RUN apt install -y \
+RUN apt-get update && apt install -y \
 unzip \
 gcc \
 gawk \
@@ -30,7 +30,7 @@ python3-psycopg2 \
 pandoc texlive-xetex texlive-fonts-recommended texlive-plain-generic
 
 
-RUN apt install -y python3-pip python3.10-dev && python3.10 -m pip install --upgrade pip
+RUN apt-get update && apt install -y python3-pip python3.10-dev && python3.10 -m pip install --upgrade pip
 RUN python3.10 -m pip install \
 numpy \
 pandas \
