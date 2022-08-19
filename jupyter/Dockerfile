@@ -13,9 +13,7 @@ libnet-ssleay-perl \
 openssl \
 libauthen-pam-perl \
 libpam-runtime \
-libio-pty-perl
-
-RUN apt-get update && apt install -y \
+libio-pty-perl \
 unzip \
 gcc \
 gawk \
@@ -27,7 +25,11 @@ libssl-dev \
 net-tools \
 git-all \
 python3-psycopg2 \
-pandoc texlive-xetex texlive-fonts-recommended texlive-plain-generic
+pandoc texlive-xetex \
+texlive-fonts-recommended \
+texlive-plain-generic \
+ffmpeg \
+p7zip
 
 
 RUN apt-get update && apt install -y python3-pip python3.10-dev && python3.10 -m pip install --upgrade pip
