@@ -10,7 +10,7 @@ services:
       PGDATA: "/var/lib/postgresql/data/pgdata"
       POSTGRES_DB: "postgres"
     volumes:
-      - ${STORAGE_HOME}:/var/lib/postgresql/data
+      - ${STORAGE_HOME}/pgdata:/var/lib/postgresql/data
     ports:
       - '5455:5432'
     command: postgres
