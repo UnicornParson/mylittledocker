@@ -1,1 +1,27 @@
-FROM ubuntu:latest
+FROM ubuntu:20.04
+ENV DEBIAN_FRONTEND=noninteractive
+ENV PASSWDDB=A0JwajqVEZhvIrlpCoVcIn9HwzVHV5u
+ENV MAINDB=Syslog
+RUN apt update  && apt upgrade -y
+RUN apt update && apt install -y linux-libc-dev software-properties-common
+RUN add-apt-repository -y ppa:adiscon/v8-devel
+RUN add-apt-repository -y ppa:deadsnakes/ppa
+RUN apt update && apt upgrade -y
+RUN apt install -y rsyslog rsyslog-mysql mysql-server mysql-client
+##RUN ufw allow 514/udp &&  ufw allow 1514/tcp && ufw reload
+
+RUN mysql -e "CREATE DATABASE ${MAINDB} /*\!40100 DEFAULT CHARACTER SET utf8 */;" \
+    mysql -e "CREATE USER rsyslog@localhost IDENTIFIED BY '${PASSWDDB}';" \
+    mysql -e "GRANT ALL PRIVILEGES ON rsyslog.* TO '${MAINDB}'@'localhost';" \
+    mysql -e "FLUSH PRIVILEGES;" 
+
+EXPOSE 514
+EXPOSE 1514
+# config only
+#removeme
+RUN apt install -y openssh-server
+COPY bootstrap.rsyslog.sh /home/bootstrap.sh
+EXPOSE 22
+COPY rsyslog.conf /etc/rsyslog.conf
+
+ENTRYPOINT ["/bin/bash", "/home/bootstrap.sh"]
