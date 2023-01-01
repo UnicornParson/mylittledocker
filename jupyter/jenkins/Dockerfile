@@ -1,4 +1,5 @@
-FROM ubuntu:22.04
+FROM jenkins/jenkins:latest
+USER root
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt update && apt upgrade -y
 RUN apt-get update && apt install -y linux-libc-dev software-properties-common
@@ -56,16 +57,6 @@ ffmpeg-quality-metrics \
 nbconvert \
 pyppeteer
 
-RUN jupyter notebook --generate-config && \
-jupyter nbextension install --py ipyparallel && \
-jupyter nbextension enable --py ipyparallel && \
-jupyter serverextension enable --py ipyparallel
-
-RUN ipython profile create
-COPY cfg/jupyter_notebook_config.py /root/.jupyter/jupyter_notebook_config.py
-COPY cfg/ipython_config.py /root/.ipython/profile_default/ipython_config.py
-# empty password
-COPY cfg/jupyter_notebook_config.json /root/.jupyter/jupyter_notebook_config.json
 
 
 RUN go install github.com/gopherdata/gophernotes@v0.7.5
@@ -75,11 +66,8 @@ RUN cp "$(go env GOPATH)"/pkg/mod/github.com/gopherdata/gophernotes@v0.7.5/kerne
 RUN chmod +w ./kernel.json
 RUN sed "s|gophernotes|$(go env GOPATH)/bin/gophernotes|" < kernel.json.in > kernel.json
 
+EXPOSE 8080
 
-COPY bootstrap.sh /home/bootstrap.sh
-EXPOSE 8000
-EXPOSE 8001
-ENTRYPOINT ["/bin/bash", "/home/bootstrap.sh"]
 
 
 

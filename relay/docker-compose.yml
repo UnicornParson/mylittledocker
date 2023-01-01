@@ -8,4 +8,4 @@ services:
     ports:
       - '9050:9050'
       - '8118:8118'
-    shm_size: '256m'
+    shm_size: '2048m'

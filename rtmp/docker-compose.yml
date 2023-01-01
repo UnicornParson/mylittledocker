@@ -1,13 +1,13 @@
 version: '3.6'
 services:
-  jupyter:
+  rtmp_nginx:
     restart: always
     build:
       context: '.'
       dockerfile: "./Dockerfile"
     ports:
-      - '8090:8000'
-      - '8091:8001'
+      - '1935:1935'
+      - '5050:5050'
     volumes:
-      - '${JUPYTER_HOME}:/home/data'
-    shm_size: '4096m'
+      - '${RTMP_HOME}:/usr/share/nginx/html/hlslive'
+    shm_size: '1024m'
