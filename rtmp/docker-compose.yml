@@ -9,5 +9,6 @@ services:
       - '1935:1935'
       - '5050:5050'
     volumes:
-      - '${RTMP_HOME}:/usr/share/nginx/html/hlslive'
+      - '${RTMP_HOME}/live:/usr/share/nginx/html/hlslive'
+      - '${RTMP_HOME}/log:/var/log/nginx/log'
     shm_size: '1024m'
