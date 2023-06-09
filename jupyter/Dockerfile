@@ -36,9 +36,11 @@ golang
 RUN apt-get update && apt install -y python3-pip python3.10-dev && python3.10 -m pip install --upgrade pip
 RUN python3.10 -m pip install \
 numpy \
+tqdm \
 pandas \
 jupyter \
 pympler \
+numba \
 ipyparallel \
 jupyter_server \
 asyncio \
@@ -54,7 +56,8 @@ reprint \
 line_profiler \
 ffmpeg-quality-metrics \
 nbconvert \
-pyppeteer
+pyppeteer \
+torch torchvision torchaudio
 
 RUN jupyter notebook --generate-config && \
 jupyter nbextension install --py ipyparallel && \
