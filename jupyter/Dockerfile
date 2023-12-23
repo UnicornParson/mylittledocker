@@ -34,30 +34,8 @@ golang
 
 
 RUN apt-get update && apt install -y python3-pip python3.10-dev && python3.10 -m pip install --upgrade pip
-RUN python3.10 -m pip install \
-numpy \
-tqdm \
-pandas \
-jupyter \
-pympler \
-numba \
-ipyparallel \
-jupyter_server \
-asyncio \
-tensorflow \
-pytesseract \
-opencv-python \
-matplotlib \
-matplotlib-inline \
-line_profiler \
-youtube-dl \
-pymongo \
-reprint \
-line_profiler \
-ffmpeg-quality-metrics \
-nbconvert \
-pyppeteer \
-torch torchvision torchaudio
+COPY cfg/requirements.txt /root/requirements.txt
+RUN python3.10 -m pip install -r /root/requirements.txt
 
 RUN jupyter notebook --generate-config && \
 jupyter nbextension install --py ipyparallel && \
