@@ -1,8 +1,7 @@
-FROM ubuntu:22.04
+FROM ubuntu:24.10
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt update && apt upgrade -y
 RUN apt-get update && apt install -y linux-libc-dev software-properties-common
-RUN add-apt-repository ppa:deadsnakes/ppa
 RUN apt-get update && apt install -y \
 nano \
 htop \
@@ -33,28 +32,24 @@ p7zip \
 golang
 
 
-RUN apt-get update && apt install -y python3-pip python3.10-dev && python3.10 -m pip install --upgrade pip
-COPY cfg/requirements.txt /root/requirements.txt
-RUN python3.10 -m pip install -r /root/requirements.txt
+RUN apt-get update && apt install -y python3-pip python3.12-dev python3.12-venv
+RUN python3.12 -m venv ~/_venv
+RUN ~/_venv/bin/pip3 install --upgrade pip
+COPY cfg/requirements_24.txt /root/requirements.txt
+RUN ~/_venv/bin/pip3 install -r /root/requirements.txt
 
-RUN jupyter notebook --generate-config && \
-jupyter nbextension install --py ipyparallel && \
-jupyter nbextension enable --py ipyparallel && \
-jupyter serverextension enable --py ipyparallel
+RUN ~/_venv/bin/jupyter notebook --generate-config && \
+~/_venv/bin/jupyter nbextension install --py ipyparallel && \
+~/_venv/bin/jupyter nbextension enable --py ipyparallel && \
+~/_venv/bin/jupyter serverextension enable --py ipyparallel
+RUN ls -lh ~/_venv/bin/
 
-RUN ipython profile create
+RUN ~/_venv/bin/ipython profile create
 COPY cfg/jupyter_notebook_config.py /root/.jupyter/jupyter_notebook_config.py
 COPY cfg/ipython_config.py /root/.ipython/profile_default/ipython_config.py
 # empty password
 COPY cfg/jupyter_notebook_config.json /root/.jupyter/jupyter_notebook_config.json
 
-
-RUN go install github.com/gopherdata/gophernotes@v0.7.5
-RUN mkdir -p ~/.local/share/jupyter/kernels/gophernotes
-RUN cd ~/.local/share/jupyter/kernels/gophernotes
-RUN cp "$(go env GOPATH)"/pkg/mod/github.com/gopherdata/gophernotes@v0.7.5/kernel/*  "."
-RUN chmod +w ./kernel.json
-RUN sed "s|gophernotes|$(go env GOPATH)/bin/gophernotes|" < kernel.json.in > kernel.json
 
 
 COPY bootstrap.sh /home/bootstrap.sh

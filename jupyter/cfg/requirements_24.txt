@@ -5,7 +5,7 @@ jupyter
 pympler
 numba
 ipyparallel
-jupyter_server==1.24.0 
+jupyter_server
 asyncio
 tensorflow
 pytesseract
@@ -33,11 +33,10 @@ graphviz
 networkx
 pydot
 imageio
-#scikit-learn
-#seaborn
-#pyvis
-#platform
-#hashlib
-#jycm
+scikit-learn
+seaborn
+pyvis
+jycm
 pipreqs
 python-dotenv
+psycopg

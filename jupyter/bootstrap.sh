@@ -1,11 +1,9 @@
 #!/bin/bash
 LOG="/home/bootstrap.log"
-#service webmin start 2>&1 | tee -ia $LOG
-#service webmin status | tee -ia $LOG
 #ipcluster start -n 16 --daemonize
 cd /home
 #python3 -m http.server 8000 &
-jupyter notebook --port=8001 --no-browser --ip=0.0.0.0 --allow-root
+~/_venv/bin/jupyter notebook --port=8001 --no-browser --ip=0.0.0.0 --allow-root
 ##/root/.jupyter/jupyter_notebook_config.py
 
 /bin/bash
