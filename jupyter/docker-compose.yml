@@ -4,7 +4,7 @@ services:
     restart: always
     build:
       context: '.'
-      dockerfile: "./Dockerfile.24.10"
+      dockerfile: "./Dockerfile"
     ports:
       - '8090:8000'
       - '8091:8001'

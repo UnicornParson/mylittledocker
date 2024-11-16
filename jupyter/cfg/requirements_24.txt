@@ -2,8 +2,8 @@ numpy
 tqdm
 pandas
 jupyter
+jupyterlab
 pympler
-numba
 ipyparallel
 jupyter_server
 asyncio

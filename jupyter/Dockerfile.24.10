@@ -29,14 +29,32 @@ texlive-fonts-recommended \
 texlive-plain-generic \
 ffmpeg \
 p7zip \
-golang
+golang libncurses-dev libncurses6
 
 
-RUN apt-get update && apt install -y python3-pip python3.12-dev python3.12-venv
-RUN python3.12 -m venv ~/_venv
+ENV PYVER=3.12
+
+RUN apt-get update && apt install -y python3-pip python$PYVER-dev python$PYVER-venv
+RUN python$PYVER -m venv ~/_venv
 RUN ~/_venv/bin/pip3 install --upgrade pip
+RUN apt-get update && apt install -y llvm-14-dev llvm-14 llvm-14-tools llvm
+
+ENV LLVM_CONFIG=/usr/lib/llvm-14/bin/llvm-config
+
+RUN ~/_venv/bin/pip3 install setuptools
+RUN ~/_venv/bin/pip3 install llvmlite
+RUN ~/_venv/bin/pip3 install numpy
+RUN ~/_venv/bin/pip3 install numba
+
+#RUN mkdir -p ~/_venv/src && cd ~/_venv/src && git clone https://github.com/numba/numba.git
+
+#RUN cd ~/_venv/src/numba && ls -h /root/_venv/bin && PATH=$PATH:/root/_venv/bin ~/_venv/bin/python3 setup.py install
+
+
 COPY cfg/requirements_24.txt /root/requirements.txt
 RUN ~/_venv/bin/pip3 install -r /root/requirements.txt
+
+# todo inatall numba https://numba.readthedocs.io/en/stable/user/installing.html
 
 RUN ~/_venv/bin/jupyter notebook --generate-config && \
 ~/_venv/bin/jupyter nbextension install --py ipyparallel && \
