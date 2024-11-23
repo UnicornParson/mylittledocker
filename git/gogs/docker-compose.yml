@@ -1,0 +1,10 @@
+version: '3.6'
+services:
+  gogs:
+    restart: always
+    image: gogs/gogs
+    ports:
+      - '10022:22'
+      - '10880:3000'
+    volumes:
+      - '${GOGS_DATA}:/data'
