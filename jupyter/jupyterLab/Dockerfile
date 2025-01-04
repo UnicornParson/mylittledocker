@@ -36,13 +36,20 @@ RUN apt-get update && apt install -y tesseract-ocr
 USER jovyan
 COPY .condarc /home/jovyan/.condarc
 
-RUN conda update conda
-RUN conda install -y -c conda-forge -c anaconda numpy tqdm pandas pympler numba tensorflow 
+RUN conda update conda 
+RUN conda install -y pip
+RUN conda install -y numpy tqdm pandas pympler numba tensorflow 
 # no reprint in conda
 # no videohash ImageHash xmltodict
-RUN conda install -y -c conda-forge -c anaconda pytesseract matplotlib matplotlib-inline line_profiler youtube-dl
-RUN conda install -y -c conda-forge -c anaconda pymongo line_profiler nbconvert pyppeteer 
-RUN conda install -c pytorch torchvision torchaudio cpuonly cudatoolkit python-dotenv
-RUN conda install opencv
-RUN conda install scikit-learn seaborn pyvis
+RUN conda install -y pytesseract matplotlib matplotlib-inline line_profiler youtube-dl
+RUN conda install -y pymongo line_profiler nbconvert pyppeteer 
+RUN conda install -y torchvision torchaudio cpuonly cudatoolkit python-dotenv
+RUN conda install -y opencv tesseract
+RUN conda install -y scikit-learn seaborn pyvis psycopg2
 
+RUN pushd /opt/conda/ && \
+source activate && \
+conda activate && \
+pip install jycm ImageHash xmltodict && \
+pip install git+https://github.com/faustomorales/keras-ocr.git#egg=keras-ocr && \
+popd
