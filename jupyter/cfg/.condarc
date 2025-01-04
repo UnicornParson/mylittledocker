@@ -1,0 +1,7 @@
+channels:
+  - defaults
+  - conda-forge
+  - pytorch
+  - nvidia
+  - anaconda
+channel_priority: disabled

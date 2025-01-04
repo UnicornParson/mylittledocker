@@ -1,0 +1,11 @@
+version: '3.6'
+services:
+  jupyterlab:
+    restart: always
+    build:
+      context: '.'
+      dockerfile: "./Dockerfile"
+    ports:
+      - '8888:8888'
+    volumes:
+      - '${JUPYTER_HOME}:/home/jovyan/work'
