@@ -44,7 +44,7 @@ RUN conda install -y numpy tqdm pandas pympler numba tensorflow
 RUN conda install -y pytesseract matplotlib matplotlib-inline line_profiler youtube-dl
 RUN conda install -y pymongo line_profiler nbconvert pyppeteer 
 RUN conda install -y torchvision torchaudio cpuonly cudatoolkit python-dotenv
-RUN conda install -y opencv tesseract
+RUN conda install -y opencv tesseract keras
 RUN conda install -y scikit-learn seaborn pyvis psycopg2
 
 RUN pushd /opt/conda/ && \
