@@ -13,4 +13,7 @@ done
 echo "Ollama server OK"
 ollama pull llama3.2
 ollama pull llama3.3
+ollama pull codellama
+ollama pull mistral
+ollama pull llama3.2-vision
 ollama run $OMODEL
