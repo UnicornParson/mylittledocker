@@ -12,3 +12,10 @@ services:
       - '${RTMP_HOME}/live:/usr/share/nginx/html/hlslive'
       - '${RTMP_HOME}/log:/var/log/nginx/log'
     shm_size: '1024m'
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all # alternatively, use `count: all` for all GPUs
+              capabilities: [gpu]

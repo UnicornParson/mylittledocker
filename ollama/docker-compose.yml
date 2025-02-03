@@ -14,4 +14,11 @@ services:
       - '${O_MODELS}:/root/.ollama'
     environment:
       - MODELS=llama3.3:latest,llama3.2:latest
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all # alternatively, use `count: all` for all GPUs
+              capabilities: [gpu]
 

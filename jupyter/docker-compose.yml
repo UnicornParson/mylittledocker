@@ -11,3 +11,10 @@ services:
     volumes:
       - '${JUPYTER_HOME}:/home/data'
     shm_size: '4096m'
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all # alternatively, use `count: all` for all GPUs
+              capabilities: [gpu]

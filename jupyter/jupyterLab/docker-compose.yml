@@ -9,3 +9,10 @@ services:
       - '8888:8888'
     volumes:
       - '${JUPYTER_HOME}:/home/jovyan/work'
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all # alternatively, use `count: all` for all GPUs
+              capabilities: [gpu]

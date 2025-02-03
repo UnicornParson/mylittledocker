@@ -11,3 +11,10 @@ services:
     volumes:
       - '${JENKINS_HOME}:/var/jenkins_home'
       - '${JENKINS_SHARED}:/var/jenkins_share'
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all # alternatively, use `count: all` for all GPUs
+              capabilities: [gpu]
