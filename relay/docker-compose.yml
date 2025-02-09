@@ -1,11 +1,21 @@
-version: '3.6'
+version: '3.8'
 services:
+  privoxy:
+    tty: true  
+    build:
+      context: '.'
+      dockerfile: "./privoxy.Dockerfile"
+    ports:
+      - 9051:9051
+
   relay:
     tty: true  
     build:
       context: '.'
       dockerfile: "./Dockerfile"
     ports:
-      - '9050:9050'
-      - '8118:8118'
+      - 9050:9050
+    volumes:
+      - ${TOR_RC}:/etc/tor/torrc
     shm_size: '2048m'
+    restart: on-failure
