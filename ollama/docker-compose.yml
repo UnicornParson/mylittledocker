@@ -23,7 +23,7 @@ services:
               capabilities: [gpu]
 
   open-webui:
-    image: ghcr.io/open-webui/open-webui:0.5.12-ollama
+    image: ghcr.io/open-webui/open-webui:0.5.14-ollama
     container_name: ollama-open-webui
     volumes:
       - ${UI_DATA}:/app/backend/data
@@ -32,21 +32,16 @@ services:
     ports:
       - ${OPEN_WEBUI_PORT}:8080
     environment:
+      - 'USER_AGENT=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36'
       - 'OLLAMA_BASE_URL=${OLLAMA_BASE_URL}'
       - 'WEBUI_SECRET_KEY='
       - 'AIOHTTP_CLIENT_TIMEOUT=None'
       - 'ENABLE_AUTOCOMPLETE_GENERATION=True'
       - 'ENABLE_RAG_WEB_SEARCH=True'
       - 'ENABLE_SEARCH_QUERY_GENERATION=True'
-      - 'RAG_WEB_SEARCH_RESULT_COUNT=10'
+      - 'RAG_WEB_SEARCH_RESULT_COUNT=15'
       - 'RAG_WEB_SEARCH_ENGINE=duckduckgo'
     extra_hosts:
       - host.docker.internal:host-gateway
     restart: unless-stopped
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: all # alternatively, use `count: all` for all GPUs
-              capabilities: [gpu]
+
