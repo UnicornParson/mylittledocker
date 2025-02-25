@@ -40,3 +40,9 @@ jycm
 pipreqs
 python-dotenv
 psycopg
+ollama
+langdetect
+mistletoe
+playwright
+html2text
+pdf2image

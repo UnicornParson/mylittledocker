@@ -5,7 +5,7 @@ jupyter
 pympler
 numba
 ipyparallel
-jupyter_server==1.24.0 
+jupyter_server==1.24.0
 asyncio
 tensorflow
 pytesseract
@@ -41,3 +41,9 @@ imageio
 #jycm
 pipreqs
 python-dotenv
+ollama
+langdetect
+mistletoe
+playwright
+html2text
+pdf2image

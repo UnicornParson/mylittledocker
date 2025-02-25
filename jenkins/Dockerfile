@@ -3,8 +3,9 @@ USER root
 RUN useradd -m ed 
 
 RUN apt update && apt install -y emacs nano wget
-RUN apt update && apt install -y git 
+RUN apt update && apt install -y git libicu-dev liblzma-dev libzstd-dev
 RUN apt update && apt install -y build-essential libssl-dev zlib1g-dev libbz2-dev ninja-build cmake fakeroot ncurses-dev xz-utils  bc flex libelf-dev bison
+RUN apt update && apt install -y libicu-dev liblzma-dev libzstd-dev poppler-utils
 RUN apt update && apt install -y htop python3.11-full python3.11-venv python3-pip python-is-python3 ffmpeg  python3-openssl
 RUN apt update && apt install -y pypy3-dev 
 RUN apt update && apt install -y meson binutils make csh g++ sed gawk autoconf automake autotools-dev pkg-config libtool yasm gnutls-bin linux-source zstd
