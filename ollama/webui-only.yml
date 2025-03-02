@@ -1,7 +1,7 @@
 version: '3.8'
 services:
   open-webui:
-    image: ghcr.io/open-webui/open-webui:0.5.16-ollama
+    image: ghcr.io/open-webui/open-webui:0.5.18-ollama
     container_name: ollama-open-webui
     volumes:
       - ${UI_DATA}:/app/backend/data
