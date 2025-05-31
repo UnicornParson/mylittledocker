@@ -1,0 +1,26 @@
+version: '3.8'
+services:
+  jellyfin:
+    image: jellyfin/jellyfin:latest
+    container_name: jellyfin
+    user: 1000:1000
+    volumes:
+      - ${JELLYFIN_BASE}/config:/config
+      - ${JELLYFIN_BASE}/cache:/cache
+      - ${JELLYFIN_STORAGE}:/media
+    ports:
+      - ${JELLYFIN_HTTP}:8096
+      - ${JELLYFIN_HTTPS}:8920
+      - ${JELLYFIN_UDP}:7359/udp
+    restart: unless-stopped
+    environment:
+      - TZ=Europe/Moscow
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=compute,video,utility
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
