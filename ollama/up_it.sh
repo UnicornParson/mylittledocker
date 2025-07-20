@@ -1,3 +1,3 @@
 #!/bin/bash
 source .env
-docker-compose up --build --force-recreate
+docker compose up --build --force-recreate

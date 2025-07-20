@@ -1,4 +1,3 @@
-version: '3.6'
 services:
   ollama:
     restart: always
@@ -23,7 +22,7 @@ services:
               capabilities: [gpu]
 
   open-webui:
-    image: ghcr.io/open-webui/open-webui:0.6.13-ollama
+    image: ghcr.io/open-webui/open-webui:0.6.18-ollama
     container_name: ollama-open-webui
     volumes:
       - ${UI_DATA}:/app/backend/data
