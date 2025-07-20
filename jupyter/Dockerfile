@@ -30,7 +30,8 @@ texlive-fonts-recommended \
 texlive-plain-generic \
 ffmpeg \
 p7zip \
-golang poppler-utils
+golang poppler-utils \
+chromium chromium-driver
 
 
 RUN apt-get update && apt install -y python3-pip python3.10-dev && python3.10 -m pip install --upgrade pip
