@@ -4,8 +4,6 @@ services:
     container_name: ollama-open-webui
     volumes:
       - ${UI_DATA}:/app/backend/data
-    depends_on:
-      - ollama
     ports:
       - ${OPEN_WEBUI_PORT}:8080
     environment:
@@ -16,7 +14,7 @@ services:
       - 'ENABLE_AUTOCOMPLETE_GENERATION=True'
       - 'ENABLE_RAG_WEB_SEARCH=True'
       - 'ENABLE_SEARCH_QUERY_GENERATION=True'
-      - 'RAG_WEB_SEARCH_RESULT_COUNT=10'
+      - 'RAG_WEB_SEARCH_RESULT_COUNT=45'
       - 'RAG_WEB_SEARCH_ENGINE=duckduckgo'
     extra_hosts:
       - host.docker.internal:host-gateway
