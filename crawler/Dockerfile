@@ -35,6 +35,7 @@ RUN playwright install chromium
 RUN playwright install-deps chromium
 
 COPY crawler_endpoint/ /app/crawler_endpoint/
+COPY local_test.py /app/local_test.py
 
 ENV PYTHONPATH=/app
 

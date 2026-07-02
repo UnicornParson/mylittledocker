@@ -1,8 +1,3 @@
-# Dockerfile.test — контейнер для запуска unit-тестов crawler_endpoint
-#
-# Usage:
-#   docker build -t crawler-endpoint-test -f Dockerfile.test .
-#   docker run --rm crawler-endpoint-test
 
 FROM python:3.13-slim
 

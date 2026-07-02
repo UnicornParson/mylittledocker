@@ -75,18 +75,30 @@ class FetchEngine:
         return raw
 
     async def fetch_all(self, urls: List[str]) -> List[Optional[str]]:
-        """Fetch multiple URLs in parallel, limited by ``max_concurrency``."""
+        """Fetch multiple URLs in parallel, limited by ``max_concurrency``.
+
+        Preserves the order of results matching the input URLs.
+        If a single URL fails (exception or None) it's returned as None
+        in the corresponding position.
+        """
         sem = self._semaphore
 
-        async def _limited(url: str) -> Optional[str]:
+        async def _fetch_one(url: str) -> tuple[int, Optional[str]]:
+            """Return (index, html_or_None) so we can restore order."""
             async with sem:
-                return await self.fetch(url)
+                try:
+                    html = await self.fetch(url)
+                    return (urls.index(url), html)
+                except Exception as exc:
+                    logger.error("Unhandled error in fetch_all for %s: %s", url, exc)
+                    return (urls.index(url), None)
 
-        tasks = [asyncio.create_task(_limited(u)) for u in urls]
-        results: List[Optional[str]] = []
+        tasks = [asyncio.create_task(_fetch_one(u)) for u in urls]
+        ordered: list[Optional[str]] = [None] * len(urls)
         for coro in asyncio.as_completed(tasks):
-            results.append(await coro)
-        return results
+            idx, html = await coro
+            ordered[idx] = html
+        return ordered
 
     async def close(self) -> None:
         """Close underlying HTTP client and Playwright resources."""

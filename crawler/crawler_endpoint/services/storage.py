@@ -59,9 +59,19 @@ class StorageLayer:
         """Append a ManifestEntry to manifest.json."""
         entries: List[dict] = []
         if self._manifest_path.exists():
-            raw = self._manifest_path.read_text(encoding="utf-8")
-            if raw.strip():
-                entries = json.loads(raw)
+            raw = self._manifest_path.read_text(encoding="utf-8").strip()
+            if raw:
+                try:
+                    loaded = json.loads(raw)
+                    if isinstance(loaded, list):
+                        entries = loaded
+                    else:
+                        # If the file contains something else (dict, etc.),
+                        # start fresh to avoid corruption.
+                        entries = []
+                except json.JSONDecodeError:
+                    # Corrupted / empty JSON file – start fresh
+                    entries = []
 
         entries.append(self._entry_as_dict(entry))
 
