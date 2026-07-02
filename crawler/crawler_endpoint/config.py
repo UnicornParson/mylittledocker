@@ -20,4 +20,8 @@ class Settings(BaseSettings):
     port: int = 8000
     gunicorn_workers: int = 4
 
+    # Optional SOCKS5 proxy (e.g. socks5://127.0.0.1:9050)
+    # If set, ALL fetches will go through this proxy only.
+    socks5_proxy: str | None = None
+
     model_config = {"env_prefix": "", "case_sensitive": False}

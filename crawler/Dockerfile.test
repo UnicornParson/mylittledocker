@@ -1,0 +1,32 @@
+# Dockerfile.test — контейнер для запуска unit-тестов crawler_endpoint
+#
+# Usage:
+#   docker build -t crawler-endpoint-test -f Dockerfile.test .
+#   docker run --rm crawler-endpoint-test
+
+FROM python:3.13-slim
+
+# Prevent Python from writing .pyc files and buffering stdout
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
+
+# Create and set working directory
+WORKDIR /app
+
+# Install system dependencies (none required for unit tests)
+
+# Copy only requirements first for layer caching
+COPY crawler_endpoint/requirements.txt .
+
+# Install Python dependencies
+RUN pip install --upgrade pip
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy the entire package
+COPY crawler_endpoint/ /app/crawler_endpoint/
+
+# Add the package root to PYTHONPATH so imports work without setup.py
+ENV PYTHONPATH=/app
+
+# Default command: run all tests with verbose output
+CMD ["pytest", "-v", "--tb=short"]
