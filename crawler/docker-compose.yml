@@ -1,0 +1,40 @@
+services:
+  searxng:
+    image: searxng/searxng:latest
+    container_name: searxng
+    restart: unless-stopped
+
+    ports:
+      - "${SEARXNG_PORT}:8080"
+
+    environment:
+      - SEARXNG_BASE_URL=http://localhost:${SEARXNG_PORT}/
+      - UWSGI_WORKERS=4
+      - UWSGI_THREADS=4
+
+    volumes:
+      - ${DATA_PATH}/searxng/config:/etc/searxng
+      - ${DATA_PATH}/searxng/logs:/var/log/searxng
+
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://127.0.0.1:8080/healthz"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
+    security_opt:
+      - no-new-privileges:true
+
+    cap_drop:
+      - ALL
+
+    tmpfs:
+      - /tmp
+
+    networks:
+      - searxng
+
+networks:
+  searxng:
+    driver: bridge
