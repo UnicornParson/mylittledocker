@@ -18,13 +18,13 @@ class StorageLayer:
         self._data_path = settings.data_path
 
     def save_html(self, url: str, html: str) -> str:
-        """Save raw HTML to /data/pages/<sha256(url)>.html and return the path."""
+        """Save raw HTML to /data/pages/<sha256(url)>.int(timestamp_ns).html and return the path."""
         # TODO: implement sha256-based idempotent HTML storage
         _ = url, html
         return ""
 
     def save_text(self, url: str, text: str) -> str:
-        """Save extracted text to /data/pages/<sha256(url)>.txt and return the path."""
+        """Save extracted text to /data/pages/<sha256(url)>.int(timestamp_ns).txt and return the path."""
         # TODO: implement sha256-based idempotent text storage
         _ = url, text
         return ""

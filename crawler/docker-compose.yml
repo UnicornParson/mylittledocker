@@ -35,6 +35,47 @@ services:
     networks:
       - searxng
 
+  crawler_endpoint:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: crawler_endpoint
+    restart: unless-stopped
+
+    ports:
+      - "${CRAWLER_PORT:-8000}:8000"
+
+    environment:
+      - SEARXNG_URL=http://searxng:8080
+      - DATA_PATH=/data
+      - LOG_PATH=/data/access.log
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - GUNICORN_WORKERS=${GUNICORN_WORKERS:-4}
+      - MAX_CONCURRENCY=${MAX_CONCURRENCY:-10}
+      - FETCH_TIMEOUT=${FETCH_TIMEOUT:-15}
+      - FETCH_RETRIES=${FETCH_RETRIES:-2}
+      - PLAYWRIGHT_ENABLED=${PLAYWRIGHT_ENABLED:-false}
+      - SOCKS5_PROXY=${socks5_proxy:-}
+
+    volumes:
+      - ${DATA_PATH}/crawler/data:/data
+
+    depends_on:
+      searxng:
+        condition: service_healthy
+
+    security_opt:
+      - no-new-privileges:true
+
+    cap_drop:
+      - ALL
+
+    tmpfs:
+      - /tmp
+
+    networks:
+      - searxng
+
 networks:
   searxng:
     driver: bridge
