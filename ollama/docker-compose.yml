@@ -22,7 +22,7 @@ services:
               capabilities: [gpu]
 
   open-webui:
-    image: ghcr.io/open-webui/open-webui:v0.8.12
+    image: ghcr.io/open-webui/open-webui:v0.9.5
     container_name: ollama-open-webui
     volumes:
       - ${UI_DATA}:/app/backend/data
@@ -34,7 +34,7 @@ services:
       - 'USER_AGENT=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36'
       - 'OLLAMA_BASE_URL=${OLLAMA_BASE_URL}'
       - 'WEBUI_SECRET_KEY='
-      - 'AIOHTTP_CLIENT_TIMEOUT=None'
+      - 'AIOHTTP_CLIENT_TIMEOUT=60000'
       - 'ENABLE_AUTOCOMPLETE_GENERATION=True'
       - 'ENABLE_RAG_WEB_SEARCH=True'
       - 'ENABLE_SEARCH_QUERY_GENERATION=True'

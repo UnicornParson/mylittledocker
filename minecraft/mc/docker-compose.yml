@@ -32,7 +32,7 @@ services:
       AUTOPAUSE_TIMEOUT_INIT: "30"
       AUTOPAUSE_TIMEOUT_EST: "10"
     restart: unless-stopped
-    user: "${UID}:${GID}"
+    user: "${SERVER_UID}:${SERVER_GID}"
     volumes:
       - ${MINECRAFT_DATA}:/data
     logging:
