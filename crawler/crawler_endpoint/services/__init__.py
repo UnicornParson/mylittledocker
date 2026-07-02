@@ -1,0 +1,1 @@
+"""Services package — business logic layer for search, fetch, extract, storage, and logging."""

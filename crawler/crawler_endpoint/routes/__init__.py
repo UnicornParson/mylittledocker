@@ -1,0 +1,1 @@
+"""Routes package for crawler_endpoint API and MCP endpoints."""
