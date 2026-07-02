@@ -15,4 +15,13 @@ docker build -t "${IMAGE_NAME}" -f "${DOCKERFILE}" "${CONTEXT}"
 
 echo ""
 echo "=== Running tests ==="
-docker run --rm "${IMAGE_NAME}"
+# Load environment variables from .env (skip empty lines and comments)
+ENV_ARGS=()
+while IFS='=' read -r key value; do
+    # skip blank lines and comments
+    if [[ -n "$key" && "$key" != \#* ]]; then
+        ENV_ARGS+=("--env" "${key}=${value}")
+    fi
+done < .env
+
+docker run --rm "${ENV_ARGS[@]}" "${IMAGE_NAME}"

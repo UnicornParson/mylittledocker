@@ -1,6 +1,7 @@
 """Tests for FetchEngine."""
 
 import asyncio
+import os
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx
@@ -54,11 +55,11 @@ class TestFetchEngine:
         """Proxy is applied to httpx client when socks5_proxy is set."""
         settings = _make_settings()
         proxy_url = "socks5://127.0.0.1:1080"
-        engine = FetchEngine(settings, socks5_proxy=proxy_url)
+        with patch("httpx.AsyncClient") as mock_client:
+            engine = FetchEngine(settings, socks5_proxy=proxy_url)
+            mock_client.assert_called_once_with(proxy=proxy_url, timeout=15)
         assert engine._socks5_proxy == proxy_url
-        # _client proxy: should contain the SOCKS5 URL
-        assert engine._client._proxy == proxy_url
-        await engine.close()
+        # _client is a MagicMock — no real resources to close
 
     @pytest.mark.asyncio
     async def test_fetch_with_proxy_from_settings(self):
@@ -72,10 +73,11 @@ class TestFetchEngine:
     async def test_fetch_no_proxy_default(self):
         """Without socks5_proxy the client uses no proxy."""
         settings = _make_settings()
-        engine = FetchEngine(settings)
+        with patch("httpx.AsyncClient") as mock_client:
+            engine = FetchEngine(settings)
+            mock_client.assert_called_once_with(timeout=15)
         assert engine._socks5_proxy is None
-        assert engine._client._proxy is None
-        await engine.close()
+        # _client is a MagicMock — no real resources to close
 
     @pytest.mark.asyncio
     async def test_fetch_anubis_playwright_disabled(self):
@@ -205,3 +207,26 @@ class TestFetchEngine:
                 assert result == _SAMPLE_HTML
                 mock_cs.assert_not_called()  # httpx succeeds, no need for cloudscraper
                 await engine.close()
+
+    # -- Integration test with real Gentoo mirror ---------------------------
+
+    @pytest.mark.skipif(
+        not os.environ.get("socks5_proxy"),
+        reason="socks5_proxy not set — skipping real-world fetch test",
+    )
+    @pytest.mark.asyncio
+    async def test_fetch_real_gentoo_mirror(self):
+        """Fetch a real file from Gentoo mirror via SOCKS5 proxy from env."""
+        proxy_url = os.environ["socks5_proxy"]
+        settings = _make_settings()
+        engine = FetchEngine(settings, socks5_proxy=proxy_url)
+
+        try:
+            html = await engine.fetch(
+                "https://ftp.belnet.be/pub/rsync.gentoo.org/gentoo/pub/"
+            )
+            assert html is not None, "Expected non-None HTML from Gentoo mirror"
+            assert "<html" in html.lower(), "Expected HTML content"
+            assert "gentoo" in html.lower(), "Expected 'gentoo' in page content"
+        finally:
+            await engine.close()
