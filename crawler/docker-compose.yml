@@ -44,6 +44,7 @@ services:
 
     ports:
       - "${CRAWLER_PORT:-8000}:8000"
+      - "${MCP_PORT:-8101}:8001"
 
     environment:
       - SEARXNG_URL=http://searxng:8080
@@ -54,8 +55,9 @@ services:
       - MAX_CONCURRENCY=${MAX_CONCURRENCY:-10}
       - FETCH_TIMEOUT=${FETCH_TIMEOUT:-15}
       - FETCH_RETRIES=${FETCH_RETRIES:-2}
-      - PLAYWRIGHT_ENABLED=${PLAYWRIGHT_ENABLED:-false}
+      - PLAYWRIGHT_ENABLED=true
       - SOCKS5_PROXY=${socks5_proxy:-}
+      - MCP_HOST=0.0.0.0
 
     volumes:
       - ${DATA_PATH}/crawler/data:/data

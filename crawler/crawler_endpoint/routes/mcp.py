@@ -1,85 +1,196 @@
-"""Flask blueprint /mcp/*.
+"""FastMCP server with SSE transport.
 
-MCP API endpoint:
-- POST /mcp/tools/call — Call MCP tools (search, crawl, fetch_page)
+MCP API endpoint with tools:
+- search      — Search SearXNG, no fetch
+- crawl       — Search → fetch all results → extract → save
+- fetch_page  — Fetch single URL → extract → save
 
-All tools use the DI container from ``current_app.extensions["container"]``.
+The DI container is accessed via the module-level ``get_container()``
+helper which lazily creates a singleton ``Container``.
+
+Transport: SSE (Streaming HTTP) on a dedicated port.
 """
 
 from __future__ import annotations
 
-import asyncio
+import hashlib
 import time
+import logging
 from typing import Any, Dict, List
 
-from flask import Blueprint, current_app, jsonify, request
+from mcp.server import Server
+from mcp.server.sse import SseServerTransport
+from mcp.types import (
+    Tool,
+    TextContent,
+    ListToolsResult,
+    CallToolResult,
+)
+from starlette.applications import Starlette
+from starlette.routing import Route, Mount
+from starlette.responses import JSONResponse
 
+from crawler_endpoint.di import Container
 from crawler_endpoint.models import ManifestEntry, SearchResult
 
-mcp_bp = Blueprint("mcp", __name__)
+# ---------------------------------------------------------------------------
+# Console logger for MCP tool calls
+# ---------------------------------------------------------------------------
+
+logger = logging.getLogger("mcp.tools")
+logger.setLevel(logging.INFO)
+
+# Ensure there's always a stderr handler so logs appear in container logs
+if not logger.handlers:
+    _handler = logging.StreamHandler()
+    _handler.setFormatter(logging.Formatter(
+        "[%(asctime)s] %(levelname)s [%(name)s] %(message)s",
+        datefmt="%Y-%m-%dT%H:%M:%S",
+    ))
+    logger.addHandler(_handler)
+
+# ---------------------------------------------------------------------------
+# MCP Server instance (Anthropic SDK)
+# ---------------------------------------------------------------------------
+
+mcp_server = Server("Crawler MCP Server")
+
+# ---------------------------------------------------------------------------
+# DI singleton helper
+# ---------------------------------------------------------------------------
+
+_container: Container | None = None
+
+
+def get_container() -> Container:
+    """Return the singleton DI container (lazily created on first call)."""
+    global _container
+    if _container is None:
+        _container = Container()
+    return _container
 
 
 # ---------------------------------------------------------------------------
-# Helpers
+# Tool definitions
 # ---------------------------------------------------------------------------
 
-def _get_container():
-    """Shortcut to retrieve the DI container from Flask extensions."""
-    return current_app.extensions["container"]
+@mcp_server.list_tools()
+async def handle_list_tools() -> list[Tool]:
+    return [
+        Tool(
+            name="search",
+            description="Search SearXNG and return results as a structured response",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "query": {
+                        "type": "string",
+                        "description": "The search query string",
+                    },
+                    "top_k": {
+                        "type": "integer",
+                        "description": "Number of results to return (1-50, default 10)",
+                        "default": 10,
+                    },
+                },
+                "required": ["query"],
+            },
+        ),
+        Tool(
+            name="fetch_page",
+            description="Fetch a single URL, extract content, save to disk, and return structured result",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "url": {
+                        "type": "string",
+                        "description": "The URL to fetch and extract",
+                    },
+                },
+                "required": ["url"],
+            },
+        ),
+        Tool(
+            name="crawl",
+            description="Full pipeline: search → fetch all → extract all → save all",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "query": {
+                        "type": "string",
+                        "description": "The search query string",
+                    },
+                    "top_k": {
+                        "type": "integer",
+                        "description": "Number of results to process (1-20, default 5)",
+                        "default": 5,
+                    },
+                },
+                "required": ["query"],
+            },
+        ),
+    ]
+
+
+@mcp_server.call_tool()
+async def handle_call_tool(name: str, arguments: dict) -> list[TextContent]:
+    if name == "search":
+        return await _call_search(arguments)
+    elif name == "fetch_page":
+        return await _call_fetch_page(arguments)
+    elif name == "crawl":
+        return await _call_crawl(arguments)
+    else:
+        raise ValueError(f"Unknown tool: {name}")
 
 
 # ---------------------------------------------------------------------------
-# Tool handlers
+# Tool implementations
 # ---------------------------------------------------------------------------
 
-async def _search_tool(query: str, top_k: int = 10) -> dict:
-    """Execute search via SearchClient and return structured response."""
-    container = _get_container()
+
+async def _call_search(arguments: dict) -> list[TextContent]:
+    query = arguments["query"]
+    top_k = arguments.get("top_k", 10)
+    if top_k < 1:
+        top_k = 1
+    if top_k > 50:
+        top_k = 50
+
+    logger.info("tool=search query=%s top_k=%d", query, top_k)
+    start = time.monotonic()
+
+    container = get_container()
     results: List[SearchResult] = await container.search_client.search(query, top_k)
 
     lines = [f"**Результаты поиска по запросу «{query}»:**"]
-    artifacts: List[Dict[str, Any]] = []
-
     for i, r in enumerate(results, 1):
         lines.append(f"\n{i}. [{r.title}]({r.url}) — {r.snippet}")
-        artifacts.append({
-            "type": "search_result",
-            "url": r.url,
-            "title": r.title,
-            "snippet": r.snippet,
-            "engine": r.engine,
-            "score": r.score,
-        })
 
     content = "\n".join(lines) if results else f"По запросу «{query}» ничего не найдено."
+    elapsed_ms = int((time.monotonic() - start) * 1000)
 
-    return {
-        "content": content,
-        "artifacts": artifacts,
-        "meta": {
-            "total_results": len(results),
-            "query": query,
-            "top_k": top_k,
-        },
-    }
+    logger.info(
+        "tool=search query=%s top_k=%d results=%d elapsed_ms=%d",
+        query, top_k, len(results), elapsed_ms,
+    )
+
+    return [TextContent(type="text", text=content)]
 
 
-async def _fetch_page_tool(url: str) -> dict:
-    """Fetch single URL → extract → save to disk.
-
-    Returns structured MCP response with extracted content and metadata.
-    """
-    container = _get_container()
+async def _call_fetch_page(arguments: dict) -> list[TextContent]:
+    url = arguments["url"]
+    logger.info("tool=fetch_page url=%s", url)
     start = time.monotonic()
+
+    container = get_container()
 
     # 1. Fetch
     raw_html = await container.fetch_engine.fetch(url)
     if raw_html is None:
-        return {
-            "content": f"Не удалось загрузить страницу: {url}",
-            "artifacts": [],
-            "meta": {"fetch_time_ms": 0, "error": "fetch_failed"},
-        }
+        elapsed_ms = int((time.monotonic() - start) * 1000)
+        logger.warning("tool=fetch_page url=%s status=fetch_failed elapsed_ms=%d", url, elapsed_ms)
+        return [TextContent(type="text", text=f"Не удалось загрузить страницу: {url}")]
 
     fetch_time_ms = int((time.monotonic() - start) * 1000)
 
@@ -97,7 +208,6 @@ async def _fetch_page_tool(url: str) -> dict:
         text_bytes = len(text.encode("utf-8"))
 
     # 4. Manifest entry
-    import hashlib
     url_hash = hashlib.sha256(url.encode("utf-8")).hexdigest()
     manifest_entry = ManifestEntry(
         url=url,
@@ -118,50 +228,42 @@ async def _fetch_page_tool(url: str) -> dict:
         text_bytes=text_bytes,
     )
 
+    elapsed_ms = int((time.monotonic() - start) * 1000)
+    logger.info(
+        "tool=fetch_page url=%s title=%s text_bytes=%d fetch_time_ms=%d elapsed_ms=%d",
+        url, title, text_bytes, fetch_time_ms, elapsed_ms,
+    )
+
     # Build response
     snippet = text[:500] + "…" if len(text) > 500 else text
+    content = (
+        f"**Страница:** {title or url}\n\n"
+        f"{snippet}\n\n"
+        f"*Сохранено: html → {html_path}, txt → {txt_path}*"
+    )
 
-    return {
-        "content": (
-            f"**Страница:** {title or url}\n\n"
-            f"{snippet}\n\n"
-            f"*Сохранено: html → {html_path}, txt → {txt_path}*"
-        ),
-        "artifacts": [
-            {
-                "type": "page",
-                "url": url,
-                "title": title,
-                "text_length": len(text),
-                "html_path": html_path,
-                "text_path": txt_path,
-                "fetch_time_ms": fetch_time_ms,
-            }
-        ],
-        "meta": {
-            "fetch_time_ms": fetch_time_ms,
-            "text_bytes": text_bytes,
-            "extracted": bool(text),
-        },
-    }
+    return [TextContent(type="text", text=content)]
 
 
-async def _crawl_tool(query: str, top_k: int = 5) -> dict:
-    """Full pipeline: search → fetch all → extract all → save all.
+async def _call_crawl(arguments: dict) -> list[TextContent]:
+    query = arguments["query"]
+    top_k = arguments.get("top_k", 5)
+    if top_k < 1:
+        top_k = 1
+    if top_k > 20:
+        top_k = 20
 
-    Returns aggregated MCP response with summary and per-page artifacts.
-    """
-    container = _get_container()
+    logger.info("tool=crawl query=%s top_k=%d", query, top_k)
     total_start = time.monotonic()
+
+    container = get_container()
 
     # 1. Search
     results: List[SearchResult] = await container.search_client.search(query, top_k)
     if not results:
-        return {
-            "content": f"По запросу «{query}» ничего не найдено.",
-            "artifacts": [],
-            "meta": {"total_fetched": 0, "total_time_ms": 0},
-        }
+        elapsed_ms = int((time.monotonic() - total_start) * 1000)
+        logger.warning("tool=crawl query=%s top_k=%d status=no_results elapsed_ms=%d", query, top_k, elapsed_ms)
+        return [TextContent(type="text", text=f"По запросу «{query}» ничего не найдено.")]
 
     urls = [r.url for r in results]
 
@@ -169,18 +271,13 @@ async def _crawl_tool(query: str, top_k: int = 5) -> dict:
     html_bodies = await container.fetch_engine.fetch_all(urls)
 
     # 3. Extract & save
-    artifacts: List[Dict[str, Any]] = []
     fetched_count = 0
     successful_count = 0
     total_text_bytes = 0
 
-    for i, (url, result) in enumerate(zip(urls, html_bodies)):
+    for url, result in zip(urls, html_bodies):
         if result is None:
-            artifacts.append({
-                "type": "page",
-                "url": url,
-                "status": "fetch_failed",
-            })
+            logger.warning("tool=crawl query=%s url=%s status=fetch_failed", query, url)
             continue
 
         fetched_count += 1
@@ -201,30 +298,24 @@ async def _crawl_tool(query: str, top_k: int = 5) -> dict:
             successful_count += 1
 
         # Manifest
-        import hashlib
         url_hash = hashlib.sha256(url.encode("utf-8")).hexdigest()
         manifest_entry = ManifestEntry(
             url=url,
             hash=url_hash,
             title=title,
             fetched_at=time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
-            fetch_time_ms=0,  # individual fetch time not tracked per URL in batch
+            fetch_time_ms=0,
             extracted_with="trafilatura/readability",
             text_bytes=text_bytes,
         )
         container.storage.save_manifest(manifest_entry)
 
-        artifacts.append({
-            "type": "page",
-            "url": url,
-            "title": title,
-            "status": "success" if text else "no_content",
-            "text_length": len(text),
-            "html_path": html_path,
-            "text_path": txt_path,
-        })
-
     total_time_ms = int((time.monotonic() - total_start) * 1000)
+
+    logger.info(
+        "tool=crawl query=%s top_k=%d results=%d fetched=%d extracted=%d text_bytes=%d total_time_ms=%d",
+        query, top_k, len(results), fetched_count, successful_count, total_text_bytes, total_time_ms,
+    )
 
     content = (
         f"**Обход по запросу «{query}» завершён.**\n\n"
@@ -235,108 +326,37 @@ async def _crawl_tool(query: str, top_k: int = 5) -> dict:
         f"- Время: {total_time_ms} мс\n"
     )
 
-    return {
-        "content": content,
-        "artifacts": artifacts,
-        "meta": {
-            "total_results": len(results),
-            "total_fetched": fetched_count,
-            "total_extracted": successful_count,
-            "total_text_bytes": total_text_bytes,
-            "total_time_ms": total_time_ms,
-            "query": query,
-            "top_k": top_k,
-        },
-    }
+    return [TextContent(type="text", text=content)]
 
 
 # ---------------------------------------------------------------------------
-# Route
+# SSE Transport & ASGI application
 # ---------------------------------------------------------------------------
 
+sse_transport = SseServerTransport("/mcp/")
 
-@mcp_bp.route("/tools/call", methods=["POST"])
-def tools_call():
-    """Call an MCP tool.
 
-    Request JSON schema::
+async def _handle_post_message(scope, receive, send):
+    """Wrapper to handle POST messages (delegates to SseServerTransport)."""
+    await sse_transport.handle_post_message(scope, receive, send)
 
-        {
-            "tool": "search | crawl | fetch_page",
-            "input": { … }
-        }
 
-    Supported tools:
+async def sse_app(scope, receive, send):
+    """ASGI application: GET → establish SSE stream, POST → message handling."""
+    if scope["method"] == "GET":
+        async with sse_transport.connect_sse(scope, receive, send) as streams:
+            read_stream, write_stream = streams
+            await mcp_server.run(
+                read_stream,
+                write_stream,
+                mcp_server.create_initialization_options(),
+            )
+    else:
+        await _handle_post_message(scope, receive, send)
 
-    - **search** — Search SearXNG, no fetch.
-        Input: ``{"query": str, "top_k": int (default 10)}``
 
-    - **crawl** — Search → fetch all results → extract → save.
-        Input: ``{"query": str, "top_k": int (default 5)}``
-
-    - **fetch_page** — Fetch single URL → extract → save.
-        Input: ``{"url": str}``
-    """
-    data = request.get_json(silent=True) or {}
-    tool = data.get("tool", "")
-    inp = data.get("input", {})
-
-    try:
-        if tool == "search":
-            query = (inp.get("query") or "").strip()
-            if not query:
-                return jsonify({
-                    "error": "Missing required field: input.query",
-                    "valid_tools": ["search", "crawl", "fetch_page"],
-                }), 400
-
-            top_k = int(inp.get("top_k", 10))
-            if top_k < 1:
-                top_k = 1
-            if top_k > 50:
-                top_k = 50
-
-            result = asyncio.run(_search_tool(query, top_k))
-            return jsonify(result)
-
-        elif tool == "crawl":
-            query = (inp.get("query") or "").strip()
-            if not query:
-                return jsonify({
-                    "error": "Missing required field: input.query",
-                    "valid_tools": ["search", "crawl", "fetch_page"],
-                }), 400
-
-            top_k = int(inp.get("top_k", 5))
-            if top_k < 1:
-                top_k = 1
-            if top_k > 20:
-                top_k = 20
-
-            result = asyncio.run(_crawl_tool(query, top_k))
-            return jsonify(result)
-
-        elif tool == "fetch_page":
-            url = (inp.get("url") or "").strip()
-            if not url:
-                return jsonify({
-                    "error": "Missing required field: input.url",
-                    "valid_tools": ["search", "crawl", "fetch_page"],
-                }), 400
-
-            result = asyncio.run(_fetch_page_tool(url))
-            return jsonify(result)
-
-        else:
-            return jsonify({
-                "error": f"Unknown tool: {tool}",
-                "valid_tools": ["search", "crawl", "fetch_page"],
-            }), 400
-
-    except Exception as exc:
-        current_app.logger.exception("MCP tool '%s' failed", tool)
-        return jsonify({
-            "error": f"Internal error: {exc}",
-            "tool": tool,
-            "valid_tools": ["search", "crawl", "fetch_page"],
-        }), 500
+mcp_app = Starlette(
+    routes=[
+        Mount("/mcp", app=sse_app),
+    ]
+)

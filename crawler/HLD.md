@@ -9,10 +9,12 @@ crawler_endpoint — локальный orchestration-сервис, промеж
 - **Storage** — локальное сохранение контента на диск
 - **LLM Agents** — потребители данных через MCP
 
-Сервис предоставляет два интерфейса на одном порту (единый Flask-сервер):
+Сервис предоставляет **два независимых HTTP-сервера** в одном контейнере:
 
-- HTTP REST API (`/api/*`)
-- MCP API (`/mcp/*`)
+| Интерфейс      | Порт  | Технология | Транспорт        |
+|----------------|-------|------------|------------------|
+| Flask REST API | 8000  | gunicorn   | HTTP (запрос-ответ) |
+| FastMCP SSE    | 8100  | uvicorn    | Server-Sent Events  |
 
 Оба интерфейса используют общие внутренние сервисы через **Service Layer** (явный DI).
 
@@ -22,8 +24,8 @@ crawler_endpoint — локальный orchestration-сервис, промеж
 
 - Единая точка доступа к поиску + crawling
 - Детерминированное сохранение всех результатов (sha256(content) — идемпотентность)
-- Полная наблюдаемость (structured logs + persisted data)
-- Поддержка LLM-агентов через MCP protocol
+- Полная наблюдаемость (structured logs + persisted data + stderr логи вызовов)
+- Поддержка LLM-агентов через MCP protocol (SSE transport)
 - Простота расширения pipeline (rerank, embeddings, caching — pluggable steps)
 
 ---
@@ -37,38 +39,40 @@ crawler_endpoint — локальный orchestration-сервис, промеж
              │
    ┌─────────┴──────────────────┐
    │     crawler_endpoint       │
-   │     (Flask + gunicorn)     │
+   │   (два процесса)           │
    │                            │
-   │  ┌──────────────┐         │
-   │  │ Flask API     │         │
-   │  │ /api/*        │         │
-   │  └──────┬───────┘         │
-   │  ┌──────▼───────┐         │
-   │  │ MCP Router    │         │
-   │  │ /mcp/*        │         │
-   │  └──────┬───────┘         │
-   │         │                  │
-   │  ┌──────▼──────────────┐  │
-   │  │   Service Layer     │  │
-   │  │   (DI container)    │  │
-   │  └──────┬──────────────┘  │
-   │         │                  │
-   │  ┌──────▼───────┐        │
-   │  │ SearchClient  │ ←── SearXNG
-   │  └──────┬───────┘        │
-   │         │                  │
-   │  ┌──────▼───────┐        │
-   │  │ FetchEngine   │ ──→ HTTP / Playwright
-   │  └──────┬───────┘        │
-   │         │                  │
-   │  ┌──────▼───────┐        │
-   │  │ Extractor     │        │
-   │  │ (trafilatura) │        │
-   │  └──────┬───────┘        │
-   │         │                  │
-   │  ┌──────▼───────┐        │
-   │  │ StorageLayer  │ ──→ /data
-   │  └──────────────┘        │
+   │  ┌──────────────────────┐ │
+   │  │ Flask API (gunicorn) │ │
+   │  │ порт 8000            │ │
+   │  │ /api/*               │ │
+   │  └──────────┬───────────┘ │
+   │  ┌──────────▼───────────┐ │
+   │  │ FastMCP SSE (uvicorn)│ │
+   │  │ порт 8100            │ │
+   │  │ Streaming HTTP       │ │
+   │  └──────────┬───────────┘ │
+   │             │              │
+   │  ┌──────────▼────────────┐│
+   │  │   Service Layer       ││
+   │  │   (DI container)      ││
+   │  └──────────┬────────────┘│
+   │             │              │
+   │  ┌──────────▼─────────┐  │
+   │  │ SearchClient        │ ←── SearXNG
+   │  └──────────┬─────────┘  │
+   │             │              │
+   │  ┌──────────▼─────────┐  │
+   │  │ FetchEngine         │ ──→ HTTP / Playwright
+   │  └──────────┬─────────┘  │
+   │             │              │
+   │  ┌──────────▼─────────┐  │
+   │  │ Extractor            │  │
+   │  │ (trafilatura)        │  │
+   │  └──────────┬─────────┘  │
+   │             │              │
+   │  ┌──────────▼─────────┐  │
+   │  │ StorageLayer        │ ──→ /data
+   │  └────────────────────┘  │
    └──────────────────────────┘
 ```
 
@@ -79,22 +83,23 @@ crawler_endpoint — локальный orchestration-сервис, промеж
 ```
 crawler_endpoint/
 ├── __init__.py
-├── __main__.py            # entrypoint: gunicorn --bind 0.0.0.0:8000 ...
-├── app.py                 # Flask app factory (create_app)
-├── config.py              # pydantic-settings (load env → settings object)
-├── di.py                  # simple DI container / service wiring
-├── models.py              # dataclasses / pydantic models (SearchResult, CrawlResult, etc.)
+├── __main__.py              # gunicorn entrypoint для Flask API
+├── run_mcp.py               # uvicorn entrypoint для FastMCP SSE
+├── app.py                   # Flask app factory (create_app) — только /api/*
+├── config.py                # pydantic-settings (load env → settings object)
+├── di.py                    # simple DI container / service wiring
+├── models.py                # dataclasses / pydantic models
 ├── routes/
 │   ├── __init__.py
-│   ├── api.py             # Flask blueprint /api/*
-│   └── mcp.py             # Flask blueprint /mcp/*
+│   ├── api.py               # Flask blueprint /api/*
+│   └── mcp.py               # FastMCP server с тремя инструментами
 ├── services/
 │   ├── __init__.py
-│   ├── search_client.py   # SearXNG HTTP client
-│   ├── fetch_engine.py    # async fetch (httpx) + optional Playwright
-│   ├── extractor.py       # trafilatura + readability fallback
-│   ├── storage.py         # filesystem storage /data
-│   └── logger.py          # structured logging
+│   ├── search_client.py     # SearXNG HTTP client
+│   ├── fetch_engine.py      # async fetch (httpx) + optional Playwright
+│   ├── extractor.py         # trafilatura + readability fallback
+│   ├── storage.py           # filesystem storage /data
+│   └── logger.py            # structured logging
 ├── tests/
 │   ├── __init__.py
 │   ├── conftest.py
@@ -105,20 +110,27 @@ crawler_endpoint/
 └── requirements.txt
 ```
 
+Также в корне crawler/:
+- `entrypoint.sh` — запускает gunicorn + uvicorn параллельно
+- `Dockerfile` — сборка образа, EXPOSE 8000 8100
+
 ---
 
 ## 5. Configuration (pydantic-settings)
 
-| Variable         | Default               | Description                |
-|------------------|-----------------------|----------------------------|
-| `SEARXNG_URL`    | `http://searxng:8080` | SearXNG internal endpoint  |
-| `DATA_PATH`      | `/data`               | Storage root               |
-| `LOG_PATH`       | `/data/access.log`    | Path to access log         |
-| `MAX_CONCURRENCY` | `10`                  | Max parallel fetch workers |
-| `FETCH_TIMEOUT`  | `15`                  | HTTP timeout (seconds)     |
-| `FETCH_RETRIES`  | `2`                   | Retry count                |
-| `PLAYWRIGHT_ENABLED` | `false`           | Enable Playwright fallback |
-| `LOG_LEVEL`      | `INFO`                | Logging level              |
+| Variable             | Default               | Description                      |
+|----------------------|-----------------------|----------------------------------|
+| `SEARXNG_URL`        | `http://searxng:8080` | SearXNG internal endpoint        |
+| `DATA_PATH`          | `/data`               | Storage root                     |
+| `LOG_PATH`           | `/data/access.log`    | Path to access log               |
+| `MAX_CONCURRENCY`    | `10`                  | Max parallel fetch workers       |
+| `FETCH_TIMEOUT`      | `15`                  | HTTP timeout (seconds)           |
+| `FETCH_RETRIES`      | `2`                   | Retry count                      |
+| `PLAYWRIGHT_ENABLED` | `false`               | Enable Playwright fallback       |
+| `LOG_LEVEL`          | `INFO`                | Logging level                    |
+| `MCP_PORT`           | `8100`                | FastMCP SSE server port          |
+| `CRAWLER_PORT`       | `8000`                | Flask REST API port              |
+| `GUNICORN_WORKERS`   | `4`                   | Количество gunicorn-воркеров      |
 
 ---
 
@@ -167,7 +179,7 @@ class CrawlResult:
 
 ### 7.1 Flask REST API
 
-Base path: `/api`
+Base path: `/api` — порт 8000
 
 #### `POST /api/crawl`
 Поиск → fetch → extract → save → вернуть результаты.
@@ -183,14 +195,7 @@ Response:
 ```json
 {
   "query": "linux kernel tuning",
-  "results": [
-    {
-      "url": "https://kernel.org/doc/...",
-      "title": "Linux Kernel Documentation",
-      "text": "...",
-      "text_path": "/data/pages/abc123.txt"
-    }
-  ],
+  "results": [...],
   "total_fetched": 5,
   "total_time_ms": 3450
 }
@@ -199,72 +204,24 @@ Response:
 #### `GET /api/search`
 Прокси к SearXNG (format=json). Возвращает сырые URL без fetch.
 
-```json
-// Query: ?q=linux&top_k=10
-// Response:
-{
-  "query": "linux",
-  "results": [
-    {"url": "...", "title": "...", "snippet": "..."}
-  ]
-}
-```
-
 #### `GET /api/fetch`
 Fetch одного URL + extract.
 
-```json
-// Query: ?url=https://kernel.org/
-// Response:
-{
-  "url": "https://kernel.org/",
-  "title": "The Linux Kernel Archives",
-  "text": "...",
-  "text_path": "/data/pages/def456.txt"
-}
+### 7.2 FastMCP SSE (порт 8100)
+
+Три инструмента, доступные через MCP protocol с SSE-транспортом:
+
+| Tool         | Description                                      |
+|--------------|--------------------------------------------------|
+| `search`     | Поиск по SearXNG, без fetch                     |
+| `crawl`      | Поиск → fetch всех результатов → extract → save |
+| `fetch_page` | Fetch одного URL → extract → save               |
+
+Каждый вызов логируется в stdout/stderr контейнера:
+
 ```
-
----
-
-### 7.2 MCP API
-
-Base path: `/mcp`
-
-#### `POST /mcp/tools/call`
-
-Tool schema:
-
-| Tool        | Description                                      |
-|-------------|--------------------------------------------------|
-| `search`    | Поиск по SearXNG, без fetch                     |
-| `crawl`     | Поиск → fetch всех результатов → extract → save |
-| `fetch_page`| Fetch одного URL → extract → save               |
-
-Пример вызова `crawl`:
-
-```json
-{
-  "tool": "crawl",
-  "input": {
-    "query": "linux kernel tuning",
-    "top_k": 5
-  }
-}
-```
-
-Response:
-```json
-{
-  "content": "Crawled 5 pages from query 'linux kernel tuning'",
-  "artifacts": [
-    {"type": "text", "path": "/data/pages/abc123.txt"},
-    {"type": "text", "path": "/data/pages/def456.txt"}
-  ],
-  "meta": {
-    "total_fetched": 5,
-    "total_time_ms": 3450
-  }
-}
+[2026-07-03T03:00:00] INFO [mcp.tools] tool=search query="linux kernel" top_k=5
+[2026-07-03T03:00:01] INFO [mcp.tools] tool=search query="linux kernel" top_k=5 results=10 elapsed_ms=1234
 ```
 
 ---
@@ -282,97 +239,45 @@ Response:
 - Semaphore: `MAX_CONCURRENCY` (default 10)
 - Retry: `FETCH_RETRIES` attempts с exponential backoff
 - Timeout: `FETCH_TIMEOUT` seconds
-- Playwright fallback: если `PLAYWRIGHT_ENABLED=true` и HTTP fetch вернул JS-heavy страницу
+- Playwright fallback: если `PLAYWRIGHT_ENABLED=true`
 
 ### 8.3 Extractor
 - Primary: `trafilatura.extract()`
 - Fallback: `readability.Document.summary()` (html2text)
-- Output: `{title, text, metadata}`
 
 ### 8.4 Storage Layer
-- Filesystem-based:
-  ```
-  /data/
-    pages/
-      <sha256(url)>.html    # raw HTML
-      <sha256(url)>.txt     # extracted text
-    manifest.json           # append-only log (list of ManifestEntry)
-  ```
-- Идемпотентность: если `<hash>.txt` существует — skip fetch
-- `save_manifest()`: read → append → write (или использовать line-delimited JSON)
+```
+/data/
+  pages/
+    <sha256(url)>.html    # raw HTML
+    <sha256(url)>.txt     # extracted text
+  manifest.json           # append-only log
+```
 
 ### 8.5 Logger
 - File-based structured logging (JSON lines)
 - Log path: `LOG_PATH` (default `/data/access.log`)
-- Fields per entry:
-  ```json
-  {
-    "timestamp": "...",
-    "request_id": "...",
-    "event": "search|fetch|extract|error",
-    "query": "...",
-    "url": "...",
-    "latency_ms": 123,
-    "error": null
-  }
-  ```
 
 ---
 
-## 9. Concurrency Model
+## 9. Deployment
 
-- `asyncio` event loop (Flask with async route handlers or gunicorn with `uvicorn workers`)
-- Search → async fetch (parallel, semaphore-limited) → extract → save
-- Non-blocking pipeline: search results потоком поступают в FetchEngine
-
-```
-search(query)
-    │
-    ▼
-list[SearchResult] ──→ FetchEngine.fetch_all(urls) ──→ list[html]
-                            │
-                            ▼
-                    Extractor.extract_all(htmls) ──→ list[CrawlResult]
-                            │
-                            ▼
-                    Storage.save_all(results)
-                            │
-                            ▼
-                    response
-```
-
----
-
-## 10. Failure Handling
-
-| Scenario                    | Strategy                              |
-|-----------------------------|---------------------------------------|
-| SearXNG unavailable         | Return 503, log error                 |
-| URL fetch timeout           | Retry 2×, skip if exhausted           |
-| Extract empty text          | Log warning, include partial result   |
-| Disk full / write error     | Log critical, return 507              |
-| Invalid request body        | Return 400 with validation error      |
-| MCP unknown tool            | Return structured MCP error response  |
-
----
-
-## 11. Deployment
-
-- **Container**: единый Docker-образ на базе `python:3.12-slim`
-- **Process manager**: `gunicorn` (wsgi) или `uvicorn` (asgi)
-- **Docker compose**: отдельный сервис `crawler_endpoint` в том же compose-файле, что и SearXNG
+- **Container**: единый Docker-образ на базе `python:3.13-slim`
+- **Entrypoint**: `entrypoint.sh` запускает gunicorn и uvicorn параллельно
+- **Порты**: EXPOSE 8000 (REST API) и 8100 (MCP SSE)
 
 ```yaml
 services:
   searxng: ...
   crawler_endpoint:
-    build: ./crawler_endpoint
+    build: .
     ports:
-      - "8000:8000"
+      - "${CRAWLER_PORT:-8000}:8000"
+      - "${MCP_PORT:-8100}:8100"
     environment:
       - SEARXNG_URL=http://searxng:8080
       - DATA_PATH=/data
-      - MAX_CONCURRENCY=10
+      - MCP_PORT=8100
     volumes:
       - crawler_data:/data
     depends_on:
@@ -382,16 +287,15 @@ services:
 
 ---
 
-## 12. Security Model
+## 10. Security Model
 
 - **local-only trusted environment**
 - **No auth** initially (служебный сервис внутри Docker network)
-- Optional future: API key middleware (Flask before_request)
-- MCP endpoint — только изнутри Docker-сети, не публикуется наружу
+- MCP endpoint опубликован на отдельном порту — можно скрыть reverse-proxy
 
 ---
 
-## 13. Future Extensions (Roadmap)
+## 11. Future Extensions (Roadmap)
 
 - Redis job queue для долгих crawl-задач
 - Vector DB integration (Qdrant / Chroma) для RAG
@@ -403,17 +307,19 @@ services:
 
 ---
 
-## 14. Definition of Done (MVP)
+## 12. Definition of Done (MVP)
 
 - [x] SearXNG search работает через API
 - [x] `POST /api/crawl` возвращает структурированные результаты
 - [x] `GET /api/search` — прокси к SearXNG
 - [x] `GET /api/fetch` — fetch одиночного URL + extract
-- [x] Извлечённый текст сохраняется на диск (`/data/pages/<hash>.txt`)
-- [x] Raw HTML сохраняется (`/data/pages/<hash>.html`)
-- [x] `manifest.json` обновляется после каждого crawl
+- [x] Извлечённый текст сохраняется на диск
+- [x] Raw HTML сохраняется
+- [x] `manifest.json` обновляется
 - [x] `access.log` заполняется структурированными записями
-- [x] MCP endpoint `/mcp/tools/call` отвечает на вызовы `search`, `crawl`, `fetch_page`
-- [x] Flask API и MCP работают на одном порту
+- [x] FastMCP SSE сервер на отдельном порту (8100)
+- [x] Три MCP инструмента: search, crawl, fetch_page
+- [x] Логирование всех вызовов MCP в stdout/stderr
+- [x] gunicorn + uvicorn в одном контейнере через entrypoint.sh
 - [x] Контейнер собирается и запускается через `docker-compose up`
-- [x] Все тесты проходят (`pytest`)
+- [x] Документация usage.md обновлена (LM Studio, SSE)

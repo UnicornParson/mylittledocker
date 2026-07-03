@@ -2,14 +2,15 @@
 
 Creates and configures the Flask application with:
 - REST API blueprint (/api/*)
-- MCP blueprint (/mcp/*)
 - Service layer wiring via DI container
+
+FastMCP server runs separately via ``mcp.run(transport="sse")`` —
+see ``run_mcp.py`` for the MCP entrypoint.
 """
 
 from flask import Flask
 
 from crawler_endpoint.routes.api import api_bp
-from crawler_endpoint.routes.mcp import mcp_bp
 from crawler_endpoint.di import Container
 
 
@@ -26,6 +27,5 @@ def create_app() -> Flask:
 
     # Register blueprints
     app.register_blueprint(api_bp, url_prefix="/api")
-    app.register_blueprint(mcp_bp, url_prefix="/mcp")
 
     return app
