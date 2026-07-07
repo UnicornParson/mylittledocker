@@ -14,7 +14,7 @@ fi
 # 3. Проверка существования папки и создание, если нужно
 if [ ! -d "$DATA_PATH" ]; then
     echo "Папка $DATA_PATH не существует. Создаю..."
-    mkdir -p "$DATA_PATH"
+    mkdir -p "$DATA_PATH"/rgs
 fi
 
 # 4. Настройка прав для пользователя контейнера (UID 4711)
@@ -33,13 +33,33 @@ fi
 
 # 7. Создание и запуск нового контейнера
 echo "Создаю и запускаю новый контейнер $CONTAINER_NAME..."
+#docker create -it --restart always \
+#    --name $CONTAINER_NAME \
+#    -e SERVER_NAME="dss" \
+#    -p 28015:28015/udp \
+#    -p 28015:28015/tcp \
+#    -p 28082:28082/tcp \
+#    -v "$DATA_PATH":/home/ips-hosting \
+#    ipshosting/game-rust:v4 \
+#    +server.secure 0 +server.encryption 0 +server.eac 0 -nosteam
+
 docker create -it --restart always \
     --name $CONTAINER_NAME \
     -p 28015:28015/udp \
-    -p 28015:28015/tcp \
-    -p 28082:28082/tcp \
-    -v "$DATA_PATH":/home/ips-hosting \
-    ipshosting/game-rust:v4
+    -p 28016:28016/tcp \
+    -v "$DATA_PATH":/srv/rust/identity \
+    pfeiffermax/rust-game-server:latest \
+    +server.ip 0.0.0.0 \
+    +server.port 28015 \
+    +server.identity /srv/rust/identity \
+    +rcon.ip 0.0.0.0 \
+    +rcon.port 28016 \
+    +rcon.password "supersecret" \
+    +rcon.web 0 \
+    +server.hostname "dss" \
+    +server.secure 0 \
+    +server.encryption 0 \
+    +server.eac 0
 
 docker start $CONTAINER_NAME
 
