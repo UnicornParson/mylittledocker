@@ -2,37 +2,28 @@
 """
 MCP Server for Stable Diffusion (Neo Forge) - Python implementation.
 Provides tools for image generation, model management, and upscaling.
-Uses the official MCP Python SDK with Streamable HTTP transport.
+Uses the official MCP Python SDK with SSE transport.
 """
-
+from io import BytesIO
 import asyncio
 import base64
 import json
 import os
 import uuid
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional
 import logging
-import uuid
+
 import httpx
 import uvicorn
 from PIL import Image, PngImagePlugin
 from pydantic import BaseModel, Field
 from starlette.applications import Starlette
-from starlette.routing import Route
-from starlette.requests import Request
-from starlette.responses import Response
-from contextlib import asynccontextmanager
-from starlette.applications import Starlette
-from starlette.routing import Route
-from starlette.requests import Request
-from starlette.responses import Response
-import uuid
-from mcp.server import Server, NotificationOptions
-from mcp.server.models import InitializationOptions
-from mcp.server.streamable_http import StreamableHTTPServerTransport
+from starlette.routing import Mount
+
+from mcp.server import Server
+from mcp.server.sse import SseServerTransport
 import mcp.types as types
-from mcp.server.streamable_http_manager import StreamableHTTPSessionManager
 # ------------- Configuration from environment -------------
 SD_WEBUI_URL = os.environ.get("SD_WEBUI_URL", "http://127.0.0.1:7860")
 AUTH_USER = os.environ.get("SD_AUTH_USER")
@@ -392,87 +383,37 @@ async def handle_upscale_images(client: httpx.AsyncClient, args: Dict[str, Any])
 
     return [types.TextContent(type="text", text=json.dumps(results))]
 
-# ------------- HTTP Server Setup -------------
-def create_starlette_app(server: Server) -> Starlette:
-    """Create a Starlette application with MCP endpoint."""
-    session_id = f"mcp-session-{uuid.uuid4().hex[:8]}"
-    print(f"run session {session_id}")
-    
-    # Инициализируем транспорт
-    transport = StreamableHTTPServerTransport(mcp_session_id=session_id)
+# ------------- SSE Transport & ASGI application -------------
+sse_transport = SseServerTransport("/mcp/")
 
-    async def handle_mcp(request: Request) -> Response:
-        """Handle MCP requests over HTTP."""
-        body = await request.body()
-        response_data = await transport.handle_request(
-            method=request.method,
-            headers=dict(request.headers),
-            body=body,
-            query_params=dict(request.query_params),
-        )
-        return Response(
-            content=response_data.body,
-            status_code=response_data.status_code,
-            headers=response_data.headers,
-        )
 
-    # Асинхронный контекстный менеджер для управления жизненным циклом приложения
-    @asynccontextmanager
-    async def lifespan(app: Starlette):
-        # На старте приложения связываем сервер и транспорт через контекстный менеджер
-        async with server.run_transport(transport):
-            yield
-        # При остановке Starlette контекстный менеджер автоматически 
-        # закроет транспорт и отключит сервер, on_shutdown больше не нужен.
+async def _handle_post_message(scope, receive, send):
+    """Wrapper to handle POST messages (delegates to SseServerTransport)."""
+    await sse_transport.handle_post_message(scope, receive, send)
 
-    return Starlette(
-        routes=[
-            Route("/mcp", endpoint=handle_mcp, methods=["POST", "GET", "DELETE"]),
-        ],
-        lifespan=lifespan  # Передаем созданный lifespan
-    )
 
-def create_starlette_app2(server: Server) -> Starlette:
-    """Create a Starlette application with MCP endpoint."""
-    
-    # Создаем менеджер сессий, передавая ему ваш объект Server
-    # Он будет автоматически инициализировать StreamableHTTPServerTransport для запросов
-    manager = StreamableHTTPSessionManager(server)
+async def sse_app(scope, receive, send):
+    """ASGI application: GET → establish SSE stream, POST → message handling."""
+    if scope["method"] == "GET":
+        async with sse_transport.connect_sse(scope, receive, send) as streams:
+            read_stream, write_stream = streams
+            await server.run(
+                read_stream,
+                write_stream,
+                server.create_initialization_options(),
+            )
+    else:
+        await _handle_post_message(scope, receive, send)
 
-    async def handle_mcp(request: Request) -> Response:
-        """Handle MCP requests over HTTP."""
-        body = await request.body()
-        
-        # Перенаправляем обработку в менеджер сессий
-        response_data = await manager.handle_request(
-            method=request.method,
-            headers=dict(request.headers),
-            body=body,
-            query_params=dict(request.query_params),
-        )
-        return Response(
-            content=response_data.body,
-            status_code=response_data.status_code,
-            headers=response_data.headers,
-        )
 
-    @asynccontextmanager
-    async def lifespan(app: Starlette):
-        # Инициализируем менеджер сессий при старте
-        async with manager:
-            yield
-        # При выходе из контекста менеджер корректно закроет все сессии
+mcp_app = Starlette(
+    routes=[
+        Mount("/mcp", app=sse_app),
+    ]
+)
 
-    return Starlette(
-        routes=[
-            Route("/mcp", endpoint=handle_mcp, methods=["POST", "GET", "DELETE"]),
-        ],
-        lifespan=lifespan
-    )
 async def main():
-    """Entry point."""
-    app = create_starlette_app2(server)
-    config = uvicorn.Config(app, host=HOST, port=PORT, log_level="info")
+    config = uvicorn.Config(mcp_app, host=HOST, port=PORT, log_level="info")
     server_uvicorn = uvicorn.Server(config)
     logger.info(f"Starting MCP SD bridge on {HOST}:{PORT}")
     await server_uvicorn.serve()

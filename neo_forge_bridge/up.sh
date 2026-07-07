@@ -9,7 +9,7 @@ docker build -t mcp-sd-bridge .
 # Run the container interactively
 # Map port 3000, mount output directory, pass environment variables
 docker run -it --rm \
-  -p 5103:3000 \
+  -p 8103:3000 \
   -v "$(pwd)/output:/app/output" \
   -e SD_WEBUI_URL="$SD_WEBUI_URL" \
   -e SD_OUTPUT_DIR="$SD_OUTPUT_DIR" \

@@ -18,7 +18,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy the application code
 COPY bridge.py .
-
+COPY bridge2.py .
 # Default environment variables (can be overridden at runtime)
 ENV SD_WEBUI_URL=http://127.0.0.1:7860 \
     SD_OUTPUT_DIR=/app/output \
@@ -33,4 +33,4 @@ EXPOSE 3000
 VOLUME /app/output
 
 # Run the bridge
-CMD ["python", "bridge.py"]
+CMD ["python", "bridge2.py"]
