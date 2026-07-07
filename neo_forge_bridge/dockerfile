@@ -1,0 +1,36 @@
+# Use slim Python 3.14 image
+FROM python:3.14-slim
+
+# Set working directory
+WORKDIR /app
+
+# Install system dependencies required for Pillow (image processing)
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+        libjpeg-dev \
+        libpng-dev \
+        zlib1g-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy requirements file and install Python dependencies
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy the application code
+COPY bridge.py .
+
+# Default environment variables (can be overridden at runtime)
+ENV SD_WEBUI_URL=http://127.0.0.1:7860 \
+    SD_OUTPUT_DIR=/app/output \
+    PORT=3000 \
+    HOST=0.0.0.0 \
+    REQUEST_TIMEOUT=300
+
+# Expose the port the server listens on
+EXPOSE 3000
+
+# Create a volume for output images (optional, recommended to mount a host directory)
+VOLUME /app/output
+
+# Run the bridge
+CMD ["python", "bridge.py"]
