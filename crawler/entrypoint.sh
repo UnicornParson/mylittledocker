@@ -1,8 +1,9 @@
 #!/bin/bash
-# entrypoint.sh — запускает Flask API (gunicorn) и FastMCP SSE (uvicorn) в одном контейнере
+# entrypoint.sh — запускает Flask API (gunicorn) и FastMCP (SSE + StreamableHTTP) в одном контейнере
 #
-# Flask API:  порт 8000 (HTTP REST)
-# FastMCP SSE: порт 8001 (Streaming HTTP для MCP-клиентов, endpoint /mcp)
+# Flask API:       порт 8000 (HTTP REST)
+# FastMCP SSE:     порт 8001 (Streaming HTTP для MCP-клиентов, endpoint /mcp)
+# FastMCP Stream:  порт 8002 (StreamableHTTP для MCP-клиентов)
 
 set -e
 
@@ -20,6 +21,14 @@ uvicorn \
     --port 8001 \
     --log-level "${LOG_LEVEL:-info}" \
     crawler_endpoint.run_mcp:mcp_app &
+
+echo "[entrypoint] Starting FastMCP StreamableHTTP (uvicorn) on port 8002..."
+uvicorn \
+    --host 0.0.0.0 \
+    --port 8002 \
+    --log-level "${LOG_LEVEL:-info}" \
+    --root-path "/mcp" \
+    crawler_endpoint.routes.fastmcp:app &
 
 # Wait for any child process to exit
 trap 'kill $(jobs -p) 2>/dev/null; exit 0' SIGTERM SIGINT
