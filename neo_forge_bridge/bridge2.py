@@ -14,6 +14,7 @@ import uuid
 from pathlib import Path
 from typing import Any, AsyncGenerator, Dict, List, Optional
 import logging
+from starlette.staticfiles import StaticFiles
 
 import httpx
 import uvicorn
@@ -38,6 +39,8 @@ SD_UPSCALER_2 = os.environ.get("SD_UPSCALER_2", "None")
 
 PORT = int(os.environ.get("PORT", "3000"))
 HOST = os.environ.get("HOST", "0.0.0.0")
+
+PUB_URL = "http://192.168.0.18:8102"
 
 # Logging
 logging.basicConfig(level=logging.INFO)
@@ -181,6 +184,7 @@ mcp = FastMCP(
 
 
 # ------------- Tool handlers as FastMCP tools -------------
+'''
 @mcp.tool()
 async def generate_image(args: GenerateImageArgs) -> str:
     """Generate an image using Stable Diffusion (txt2img).
@@ -208,6 +212,23 @@ async def generate_image(args: GenerateImageArgs) -> str:
         "distilled_cfg_scale": args.distilled_cfg_scale or 3.5,
     }
 
+    payload = {
+    "prompt": args.prompt,
+    "negative_prompt": args.negative_prompt or "",
+    "steps": 32,
+    "width": 1024,
+    "height": 1024,
+    "cfg_scale": 2.5,        # 2,5 на картинке, в Python используем точку
+    "sampler_name": "Euler",
+    "scheduler": "Normal",
+    "seed": -1,
+    "n_iter": 1,             # Соответствует Batch Count
+    "batch_size": 1,         # Добавлено из UI (Batch Size)
+    "restore_faces": False,  # На скриншоте Hires.fix выключен, Restore Faces тоже подразумевается выключенным
+    "tiling": False,         # На скриншоте Tiling не включен
+    "distilled_cfg_scale": 3.5,
+}
+
     resp = await client.post("/sdapi/v1/txt2img", json=payload)
     resp.raise_for_status()
     data = resp.json()
@@ -234,7 +255,77 @@ async def generate_image(args: GenerateImageArgs) -> str:
         })
 
     return json.dumps(results)
+'''
 
+@mcp.tool()
+async def generate_image(args: GenerateImageArgs) -> str:
+    """Generate an image using Stable Diffusion (txt2img)."""
+    client = get_http_client()
+    output_dir = Path(args.output_path) if args.output_path else DEFAULT_OUTPUT_DIR
+    await ensure_directory(output_dir)
+
+    payload = {
+        "prompt": args.prompt + " <lora:zl_cn_female_body_v1:1>",
+        "negative_prompt": args.negative_prompt or "",
+        "steps": args.steps,
+        "width": args.width,
+        "height": args.height,
+        "cfg_scale": args.cfg_scale,
+        "sampler_name": args.sampler_name,
+        "scheduler": args.scheduler_name,
+        "seed": args.seed,
+        "n_iter": args.batch_size,
+        "restore_faces": args.restore_faces,
+        "tiling": args.tiling,
+        "distilled_cfg_scale": args.distilled_cfg_scale or 3.5,
+    }
+    payload = {
+    "prompt": args.prompt,
+    "negative_prompt": args.negative_prompt or "",
+    "steps": 32,
+    "width": 512,
+    "height": 512,
+    "cfg_scale": 2.5,        # 2,5 на картинке, в Python используем точку
+    "sampler_name": "Euler",
+    "scheduler": "Normal",
+    "seed": -1,
+    "n_iter": 1,             # Соответствует Batch Count
+    "batch_size": 1,         # Добавлено из UI (Batch Size)
+    "restore_faces": False,  # На скриншоте Hires.fix выключен, Restore Faces тоже подразумевается выключенным
+    "tiling": False,         # На скриншоте Tiling не включен
+    "distilled_cfg_scale": 3.5,
+}
+    resp = await client.post("/sdapi/v1/txt2img", json=payload)
+    resp.raise_for_status()
+    data = resp.json()
+
+    if not data.get("images"):
+        raise RuntimeError("No images generated")
+
+    # Строим ответ в Markdown
+    markdown_parts = []
+    for idx, img_b64 in enumerate(data["images"]):
+        # Получаем PNG-инфо (можно использовать для метаданных)
+        png_info_resp = await client.post(
+            "/sdapi/v1/png-info",
+            json={"image": f"data:image/png;base64,{img_b64}"}
+        )
+        png_info_resp.raise_for_status()
+        png_info = png_info_resp.json().get("info", "")
+
+        # Сохраняем на диск (опционально)
+        image_bytes = decode_base64_to_image(img_b64)
+        filepath = await save_image_with_metadata(image_bytes, png_info, output_dir)
+
+        public_url = f"{PUB_URL}/output/{filepath.name}"
+        markdown_parts.append(f"![Generated Image {idx+1}]({public_url})")
+        print(f"image url:{public_url}")
+        #markdown_parts.append(
+        #    f"![Generated Image {idx+1}](data:image/png;base64,{img_b64})"
+        #)
+
+    # Возвращаем Markdown-строку (можно добавить пути как подпись)
+    return "\n\n".join(markdown_parts) + f"\n\nImages saved to: {output_dir}"
 
 @mcp.tool()
 async def get_sd_models() -> str:
@@ -365,7 +456,7 @@ class HostFixMiddleware(BaseHTTPMiddleware):
 app = mcp.streamable_http_app()
 app.add_middleware(HostFixMiddleware)
 app.lifespan = lifespan
-
+app.mount("/app/output", StaticFiles(directory=str(DEFAULT_OUTPUT_DIR)), name="output")
 
 # ------------- Main entry point -------------
 async def main():

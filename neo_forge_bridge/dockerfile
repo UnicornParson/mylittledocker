@@ -24,7 +24,7 @@ ENV SD_WEBUI_URL=http://127.0.0.1:7860 \
     SD_OUTPUT_DIR=/app/output \
     PORT=3000 \
     HOST=0.0.0.0 \
-    REQUEST_TIMEOUT=300
+    REQUEST_TIMEOUT=3000
 
 # Expose the port the server listens on
 EXPOSE 3000

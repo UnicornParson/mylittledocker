@@ -238,8 +238,7 @@ async def _call_fetch_page(arguments: dict) -> list[TextContent]:
     snippet = text[:500] + "…" if len(text) > 500 else text
     content = (
         f"**Страница:** {title or url}\n\n"
-        f"{snippet}\n\n"
-        f"*Сохранено: html → {html_path}, txt → {txt_path}*"
+        f"{snippet}"
     )
 
     return [TextContent(type="text", text=content)]
@@ -311,21 +310,18 @@ async def _call_crawl(arguments: dict) -> list[TextContent]:
         container.storage.save_manifest(manifest_entry)
 
     total_time_ms = int((time.monotonic() - total_start) * 1000)
-
+    content = (
+        f"**Результат crawl по запросу «{query}»:**\n\n"
+        f"Найдено ссылок: {len(results)}\n"
+        f"Успешно загружено: {fetched_count}\n"
+        f"Извлечено контента: {successful_count}\n"
+        f"Объём текста: {total_text_bytes} байт\n"
+        f"Время выполнения: {total_time_ms} мс"
+    )
     logger.info(
-        "tool=crawl query=%s top_k=%d results=%d fetched=%d extracted=%d text_bytes=%d total_time_ms=%d",
+        "tool=crawl query=%s top_k=%d results=%d fetched=%d extracted=%d text_bytes=%d elapsed_ms=%d",
         query, top_k, len(results), fetched_count, successful_count, total_text_bytes, total_time_ms,
     )
-
-    content = (
-        f"**Обход по запросу «{query}» завершён.**\n\n"
-        f"- Найдено результатов: {len(results)}\n"
-        f"- Успешно загружено: {fetched_count}\n"
-        f"- Извлечено текста: {successful_count}\n"
-        f"- Всего текста: {total_text_bytes} байт\n"
-        f"- Время: {total_time_ms} мс\n"
-    )
-
     return [TextContent(type="text", text=content)]
 
 
