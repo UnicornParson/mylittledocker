@@ -77,11 +77,12 @@ def create_file(file_path: str, content: str = "", charset: str = "utf-8"):
     """
     # Empty parameter validation
     require_non_blank(file_path, "file_path")
-    path = Path(file_path)
-    require_writable_parent_directory(path, "file_path")
-
     target = Path(file_path)
+
+    # Create parent directories first, then verify parent is writable
     target.parent.mkdir(parents=True, exist_ok=True)
+    require_writable_parent_directory(target, "file_path")
+
     target.write_text(content, encoding=charset)
 
 

@@ -18,6 +18,7 @@
 """
 Global restricted workspace root, assigned at server startup
 """
+import os
 from functools import wraps
 from pathlib import Path
 from typing import List, Optional
@@ -45,6 +46,71 @@ def clean_path(raw_path: str) -> str:
         unix_style = unix_style.replace("//", "/")
     return unix_style
 
+
+def resolve_workspace_path(target_path: str, lock_root: Path) -> Path:
+    """
+    Normalize and resolve a target path relative to the workspace lock root.
+    Treats the workspace root as the filesystem root for all paths:
+      - '/test/file.txt'       -> lock_root / 'test/file.txt'
+      - 'test/file.txt'        -> lock_root / 'test/file.txt'
+      - '/workspace/file.txt'  -> lock_root / 'file.txt'  (or returned as-is if matches)
+      - '/../etc/passwd'       -> raises WorkspaceEscapeError (traversal)
+      - 'test/../../etc'       -> raises WorkspaceEscapeError (traversal)
+
+    The function:
+      1. Cleans the path (backslashes, double slashes, whitespace)
+      2. If the path starts with '/', checks whether it already points inside
+         lock_root. If so, uses it as-is (avoids duplicating lock_root prefix).
+      3. Otherwise strips leading slash and joins with lock_root.
+      4. Resolves '..' components via normpath, then resolves symlinks.
+      5. Verifies the result stays inside lock_root via relative_to.
+
+    Args:
+        target_path: Raw path from MCP tool input (may be absolute or relative)
+        lock_root: Resolved workspace root directory assigned at startup
+
+    Returns:
+        Resolved absolute Path guaranteed to be inside lock_root
+
+    Raises:
+        WorkspaceEscapeError: If the resolved path escapes the workspace
+    """
+    require_non_blank(target_path, "target_path")
+
+    # Step 1: basic cleanup (backslashes, double slashes, whitespace)
+    cleaned = clean_path(target_path)
+
+    # Step 2: if path starts with '/', check whether it already lives under lock_root
+    # Direct check using the raw cleaned path (no double-joining)
+    if cleaned.startswith("/"):
+        candidate = Path(cleaned).resolve(strict=False)
+        try:
+            candidate.relative_to(lock_root)
+            # Path is already inside workspace — return as-is
+            return candidate
+        except ValueError:
+            pass
+        # Path starts with '/' but is NOT inside lock_root:
+        # strip leading slash and treat as relative to lock_root
+        cleaned = cleaned.lstrip("/")
+
+    # Step 3: normalize '..' components safely (no symlink resolve yet)
+    normalized = Path(os.path.normpath(cleaned))
+
+    # Step 4: join with lock_root and fully resolve (includes symlinks)
+    joined = (lock_root / normalized).resolve(strict=False)
+
+    # Step 5: verify the resolved path is strictly inside lock_root
+    try:
+        joined.relative_to(lock_root)
+    except ValueError:
+        raise WorkspaceEscapeError(
+            f"Path `{target_path}` escapes workspace `{lock_root}`"
+        )
+
+    return joined
+
+
 def folder_lock_check(lock_root: str, target_path: str) -> bool:
     """
     Verify target path is strictly inside restricted lock root directory.
@@ -63,14 +129,10 @@ def folder_lock_check(lock_root: str, target_path: str) -> bool:
     require_writable_directory(lock_root_path, "lock_root")
     require_non_blank(target_path, "target_path")
 
-    root_real = lock_root_path.resolve(strict=False)
-    target_real = Path(target_path).resolve(strict=False)
-
     try:
-        # Native path subtree check, blocks partial prefix matching bypass
-        target_real.relative_to(root_real)
+        resolve_workspace_path(target_path, lock_root_path)
         return True
-    except ValueError:
+    except WorkspaceEscapeError:
         return False
 
 
@@ -90,19 +152,18 @@ def restrict_workspace(path_argument_names: List[str]):
             if GLOBAL_LOCK_ROOT is None:
                 return await async_tool_func(**kwargs)
 
-            lock_root_str = str(GLOBAL_LOCK_ROOT)
             for arg_name in path_argument_names:
                 target_value = kwargs.get(arg_name)
                 if target_value is None:
                     continue
 
-                if not folder_lock_check(lock_root_str, target_value):
-                    err_msg = (
-                        f"Access restricted: Path `{target_value}` "
-                        f"is outside allowed workspace `{lock_root_str}`"
-                    )
-                    logger.warning(f"Block cross workspace access: {err_msg}")
-                    raise WorkspaceEscapeError(err_msg)
+                # Resolve path relative to workspace root and replace it
+                resolved = resolve_workspace_path(target_value, GLOBAL_LOCK_ROOT)
+                kwargs[arg_name] = str(resolved)
+                logger.debug(
+                    f"Path '{arg_name}' resolved: '{target_value}' -> '{resolved}'"
+                )
+
             return await async_tool_func(**kwargs)
 
         return wrapper
