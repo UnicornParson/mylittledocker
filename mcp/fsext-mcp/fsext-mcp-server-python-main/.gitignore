@@ -1,0 +1,12 @@
+.venv/
+.vs/
+.idea/
+dist/
+build/
+*.egg-info/
+__pycache__/
+*.pyc
+/uv.lock
+_trial_temp/
+*.sh
+*.exe

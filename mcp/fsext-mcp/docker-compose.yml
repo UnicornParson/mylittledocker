@@ -1,0 +1,22 @@
+
+services:
+  fsext-mcp:
+    build: .
+    container_name: fsext-mcp
+    restart: unless-stopped
+
+    ports:
+      - "${MCP_PORT:-8107}:8000"
+
+    volumes:
+      - ${DATA_DIR:-./workspace}:/workspace
+
+    user: "1000:1000"
+
+    read_only: false
+
+    security_opt:
+      - no-new-privileges:true
+
+    cap_drop:
+      - ALL

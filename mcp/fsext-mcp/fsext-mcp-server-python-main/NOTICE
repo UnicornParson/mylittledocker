@@ -1,0 +1,18 @@
+FsExt MCP Server
+Copyright 2026 https://github.com/kurtzhi/fsext-mcp-server-python
+Licensed under Apache License 2.0
+
+This product includes the following third-party runtime dependencies:
+1. fastmcp (Apache-2.0): Implements MCP protocol server/client communication logic for file service remote invocation.
+2. chardet (GNU Lesser General Public License v2 or later (LGPLv2+)): Detects text file character encoding automatically.
+3. Pillow (MIT-CMU License): Image load, rotate, crop, resize and pixel processing toolkit.
+4. python-magic (MIT License): Identify file MIME type and format signature without file extension.
+5. pytesseract (MIT License): Wrapper for Tesseract OCR engine to extract text from static image assets.
+6. pydantic (MIT License): Strict data validation, type model parsing and serialization for all file service input/output parameters.
+
+Development & test-only dependencies (only required to run the tests directory, not required for end-user runtime):
+1. pytest (MIT License): Core test framework for unit & integration testing
+2. pytest-asyncio (Apache-2.0): Pytest plugin to support async test cases
+
+Full detailed inventory including exact versions, copyright holders, source repository URLs and full license texts:
+See THIRD_PARTY_LICENSES
