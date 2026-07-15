@@ -38,6 +38,7 @@ async def fs_list_directory(
         file_extension: Optional[str] = ""
 ) -> dict:
     """Scan directory, return matched absolute path list."""
+    print(f"fs_list_directory: {source_dir}")
     res = dir.list_directory(source_dir, recursive, only_files, file_extension)
     return {"paths": res}
 
@@ -51,6 +52,7 @@ async def fs_copy_directory(
         overwrite: Optional[bool] = False
 ) -> dict:
     """Copy full directory tree, overwrite controls existing target cleanup."""
+    print(f"fs_copy_directory: {source_dir} -> {copy_dest_dir}")
     dir.copy_directory(source_dir, copy_dest_dir, overwrite)
     return {}
 
@@ -64,5 +66,6 @@ async def fs_move_directory(
         overwrite: Optional[bool] = False
 ) -> dict:
     """Move directory, fail if destination exists."""
+    print(f"fs_move_directory: {source_dir} -> {dest_dir}")
     dir.move_directory(source_dir, dest_dir, overwrite)
     return {}

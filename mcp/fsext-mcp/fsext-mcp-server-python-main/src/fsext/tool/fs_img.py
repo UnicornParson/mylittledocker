@@ -40,6 +40,7 @@ async def fs_image_resize(
         pad_to_target: Optional[bool] = True
 ) -> dict:
     """Resize image with ratio lock and padding support."""
+    print(f"fs_image_resize: {source_path} -> {dest_path}")
     image.resize(source_path, dest_path, width,
                  height, keep_aspect_ratio, pad_to_target)
     return {}
@@ -57,6 +58,7 @@ async def fs_image_crop(
         height: int
 ) -> dict:
     """Crop rectangular region from image."""
+    print(f"fs_image_crop: {source_path} -> {dest_path}")
     image.crop(source_path, dest_path, x, y, width, height)
     return {}
 
@@ -70,6 +72,7 @@ async def fs_image_rotate(
         degrees: float
 ) -> dict:
     """Rotate image clockwise, expand canvas to retain full content."""
+    print(f"fs_image_rotate: {source_path} -> {dest_path}")
     image.rotate_image(source_path, dest_path, degrees)
     return {}
 
@@ -84,5 +87,6 @@ async def fs_ocr_extract_text(
         lang: Optional[str] = "eng"
 ) -> dict:
     """Extract text from image via Tesseract OCR."""
+    print(f"fs_ocr_extract_text: {image_path}")
     content = ocr.extract_text(image_path, tesseract_bin_path, tessdata_path, lang)
     return {"content": content}

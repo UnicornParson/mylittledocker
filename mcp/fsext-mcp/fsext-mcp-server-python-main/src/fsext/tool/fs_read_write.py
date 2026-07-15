@@ -39,6 +39,7 @@ async def fs_read_full_text(
         charset: Optional[Charset] = Charset.UTF8
 ) -> dict:
     """Read full text file."""
+    print(f"fs_read_full_text: {file_path}")
     res = file_read.read_text_file(file_path, charset)
     return {"content": res.content}
 
@@ -54,6 +55,7 @@ async def fs_read_text_range(
         charset: Optional[Charset] = Charset.UTF8
 ) -> dict:
     """Read sliced text segment, -1 unlimited."""
+    print(f"fs_read_text_range: {file_path}")
     res = file_read.read_text_file_range(file_path, lines_to_skip, max_lines_to_read, line_separator, charset)
     return {
         "lines_count": res.lines_count,
@@ -70,6 +72,7 @@ async def fs_read_binary_chunk(
         max_bytes_to_read: int = 0
 ) -> dict:
     """Partial binary read, base64 output, 0 unlimited."""
+    print(f"fs_read_binary_chunk: {file_path}")
     res = file_read.read_binary_file(file_path, None, bytes_to_skip, max_bytes_to_read)
     b64 = base64.b64encode(res.bytes).decode("iso-8859-1")
     return {
@@ -89,6 +92,7 @@ async def fs_write_text(
         charset: Optional[Charset] = Charset.UTF8
 ) -> dict:
     """Write text file, append or overwrite."""
+    print(f"fs_write_text: {file_path}")
     file_write.write_text_file(file_path, text, append, charset)
     return {}
 
@@ -102,6 +106,7 @@ async def fs_write_binary(
         append: bool = False
 ) -> dict:
     """Write sliced binary bytes, -1 length uses full remaining buffer."""
+    print(f"fs_write_binary: {file_path}")
     require_non_blank(base64_data, "data_base64")
     data = base64.b64decode(base64_data.encode("iso-8859-1"))
     file_write.write_binary_file(file_path, data, 0, len(data), append)

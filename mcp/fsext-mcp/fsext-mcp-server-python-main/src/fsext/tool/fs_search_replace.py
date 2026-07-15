@@ -42,6 +42,7 @@ async def fs_search_files_by_content(
         charset: Optional[Charset] = Charset.UTF8
 ) -> dict:
     """Search dir, return paths of files containing target text."""
+    print(f"fs_search_files_by_content: {dir_path}")
     paths = file_search.search_files_by_content(dir_path, recursive, search_term,
                                                 is_regex, ignore_case, file_extension, charset)
     return {"paths": paths}
@@ -63,6 +64,7 @@ async def fs_search_in_files_by_content(
         charset: Optional[Charset] = Charset.UTF8
 ) -> dict:
     """Search multi-file with line context, return matched blocks."""
+    print(f"fs_search_in_files_by_content: {dir_path}")
     res_list = file_search.search_in_files_by_content(dir_path, recursive, search_term,
                                                       limit, is_regex, ignore_case,
                                                       lines_before, lines_after, file_extension, charset)
@@ -83,6 +85,7 @@ async def fs_search_in_file_by_content(
         charset: Optional[Charset] = Charset.UTF8
 ) -> dict:
     """Single file content search with line context."""
+    print(f"fs_search_in_file_by_content: {file_path}")
     res_list = file_search.search_in_file_by_content(file_path, search_term, is_regex, ignore_case,
                                                      lines_before, lines_after, charset)
     results = [item._asdict() for item in res_list]
@@ -99,5 +102,6 @@ async def fs_file_replace(
         line_separator: Optional[str] = "\n"
 ) -> dict:
     """In-place text replace, return matched line count."""
+    print(f"fs_file_replace: {file_path}")
     count = file_replace.file_replace(file_path, search_term, replacement, line_separator)
     return {"count": count}

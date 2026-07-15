@@ -39,6 +39,7 @@ async def fs_create_file(
         charset: Optional[Charset] = Charset.UTF8
 ) -> dict:
     """Create text file with initial content."""
+    print(f"fs_create_file: {file_path}")
     file.create_file(file_path, content, charset)
     return {}
 
@@ -50,6 +51,7 @@ async def fs_delete_file(
         file_path: str
 ) -> dict:
     """Delete single regular file, reject directory."""
+    print(f"fs_delete_file: {file_path}")
     file.delete_file(file_path)
     return {}
 
@@ -63,6 +65,7 @@ async def fs_copy_file(
         overwrite: Optional[bool] = False
 ) -> dict:
     """Copy file with metadata, overwrite toggle."""
+    print(f"fs_copy_file: {source_file_path} -> {dest_file_path}")
     file.copy_file(source_file_path, dest_file_path, overwrite)
     return {}
 
@@ -76,6 +79,7 @@ async def fs_move_file(
         overwrite: Optional[bool] = False
 ) -> dict:
     """Move file, control overwrite behavior."""
+    print(f"fs_move_file: {source_file_path} -> {dest_file_path}")
     file.move_file(source_file_path, dest_file_path, overwrite)
     return {}
 
@@ -88,6 +92,7 @@ async def fs_get_file_info(
         calc_digest: Optional[bool] = False
 ) -> dict:
     """Get full file/directory metadata."""
+    print(f"fs_get_file_info: {file_path}")
     info: file.FileInfo = file.get_file_info(file_path, calc_digest)
     return info._asdict()
 
@@ -99,5 +104,6 @@ async def fs_is_file_exists(
         file_path: str
 ) -> dict:
     """Check filesystem entry existence."""
+    print(f"fs_is_file_exists: {file_path}")
     exists = file.is_file_exists(file_path)
     return {"exists": exists}
