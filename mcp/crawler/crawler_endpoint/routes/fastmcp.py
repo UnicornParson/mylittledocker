@@ -20,7 +20,8 @@ from pathlib import Path
 from pydantic import BaseModel, Field
 from mcp.server.fastmcp import FastMCP
 from starlette.middleware.base import BaseHTTPMiddleware
-
+from starlette.middleware.trustedhost import TrustedHostMiddleware
+from mcp.server.transport_security import TransportSecuritySettings
 from crawler_endpoint.di import Container
 from crawler_endpoint.models import ManifestEntry, SearchResult
 
@@ -81,6 +82,11 @@ class CrawlArgs(BaseModel):
 mcp = FastMCP(
     "Crawler MCP Server",
     stateless_http=True,
+    transport_security=TransportSecuritySettings(
+        enable_dns_rebinding_protection=False,
+        allowed_hosts=["*"],
+        allowed_origins=["*"],
+    ),
 )
 
 # ---------------------------------------------------------------------------
@@ -114,6 +120,10 @@ async def search(args: SearchArgs) -> str:
 
     return content
 
+@mcp.prompt()
+async def dummy_prompt() -> str:
+    """Заглушка, чтобы клиент не ругался."""
+    return ""
 
 @mcp.tool()
 async def fetch_page(args: FetchPageArgs) -> str:
@@ -264,4 +274,8 @@ async def crawl(args: CrawlArgs) -> str:
 # Starlette application from FastMCP
 # ---------------------------------------------------------------------------
 
-app = mcp.streamable_http_app()
+appf = mcp.streamable_http_app()
+appf.user_middleware = []
+appf.add_middleware(TrustedHostMiddleware, allowed_hosts=["*"])
+
+print("222")

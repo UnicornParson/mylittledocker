@@ -9,5 +9,5 @@ readability-lxml>=0.8
 cloudscraper>=1.2
 playwright>=1.48
 mcp>=1.0.0
-
+fastmcp 
 uvicorn[standard]>=0.32.0

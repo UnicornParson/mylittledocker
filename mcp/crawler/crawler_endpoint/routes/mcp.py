@@ -25,6 +25,8 @@ from mcp.types import (
     TextContent,
     ListToolsResult,
     CallToolResult,
+    Prompt,
+    ListPromptsResult,
 )
 from starlette.applications import Starlette
 from starlette.routing import Route, Mount
@@ -130,6 +132,12 @@ async def handle_list_tools() -> list[Tool]:
             },
         ),
     ]
+
+
+@mcp_server.list_prompts()
+async def handle_list_prompts() -> ListPromptsResult:
+    """Return empty list of prompts — this server only provides tools."""
+    return ListPromptsResult(prompts=[])
 
 
 @mcp_server.call_tool()

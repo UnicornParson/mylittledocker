@@ -45,7 +45,7 @@ services:
     ports:
       - "${CRAWLER_PORT:-8000}:8000"
       - "${MCP_PORT:-8101}:8001"
-      - "${FASTMCP_PORT:-8101}:8002"
+      - "${FASTMCP_PORT:-8102}:8101"
 
     environment:
       - SEARXNG_URL=http://searxng:8080

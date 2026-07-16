@@ -6,7 +6,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 WORKDIR /app
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    wget \
+    wget curl ca-certificates\
     gnupg \
     libnss3 \
     libnspr4 \

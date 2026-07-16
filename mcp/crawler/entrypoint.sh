@@ -20,15 +20,16 @@ uvicorn \
     --host 0.0.0.0 \
     --port 8001 \
     --log-level "${LOG_LEVEL:-info}" \
+    --proxy-headers \
     crawler_endpoint.run_mcp:mcp_app &
 
-echo "[entrypoint] Starting FastMCP StreamableHTTP (uvicorn) on port 8002..."
+echo "[entrypoint] Starting FastMCP StreamableHTTP (uvicorn) on port 8101..."
 uvicorn \
     --host 0.0.0.0 \
-    --port 8002 \
+    --port 8101 \
     --log-level "${LOG_LEVEL:-info}" \
-    --root-path "/mcp" \
-    crawler_endpoint.routes.fastmcp:app &
+    --proxy-headers \
+    crawler_endpoint.routes.fastmcp:appf &
 
 # Wait for any child process to exit
 trap 'kill $(jobs -p) 2>/dev/null; exit 0' SIGTERM SIGINT
