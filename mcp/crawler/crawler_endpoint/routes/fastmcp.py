@@ -16,7 +16,7 @@ import logging
 from contextlib import asynccontextmanager
 from typing import Any, AsyncGenerator
 from pathlib import Path
-
+import json
 from pydantic import BaseModel, Field
 from mcp.server.fastmcp import FastMCP
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -175,10 +175,21 @@ async def fetch_page(url: str) -> str:
 
     return content
 
+def truncate_at_sentence_end(text, max_chars=2000):
+    text = text.replace('\n', " ").replace('  ', " ")
+    if len(text) <= max_chars:
+        return text
+    truncated = text[:max_chars]
+    # Ищем последнюю точку, вопросительный или восклицательный знак
+    last_punct = max(truncated.rfind('.'), truncated.rfind('?'), truncated.rfind('!'))
+    if last_punct > 0:
+        return truncated[:last_punct+1] + "..."
+    else:
+        return truncated + "..."  # если знаков препинания нет – режем как есть
 
 @mcp.tool()
 async def crawl(query: str, top_k: int = 5) -> str:
-    """Full pipeline: search → fetch all → extract all → save all."""
+    """Full pipeline: search → fetch all → extract all → save all → return text content."""
     # Clamp top_k
     if top_k < 1:
         top_k = 1
@@ -202,10 +213,9 @@ async def crawl(query: str, top_k: int = 5) -> str:
     # 2. Fetch all in parallel
     html_bodies = await container.fetch_engine.fetch_all(urls)
 
-    # 3. Extract & save
+    # 3. Extract, save & collect text content
     fetched_count = 0
-    successful_count = 0
-    total_text_bytes = 0
+    pages: list[dict[str, str]] = []
 
     for url, result in zip(urls, html_bodies):
         if result is None:
@@ -226,8 +236,6 @@ async def crawl(query: str, top_k: int = 5) -> str:
         if text:
             txt_path = container.storage.save_text(url, text)
             text_bytes = len(text.encode("utf-8"))
-            total_text_bytes += text_bytes
-            successful_count += 1
 
         # Manifest
         url_hash = hashlib.sha256(url.encode("utf-8")).hexdigest()
@@ -242,20 +250,36 @@ async def crawl(query: str, top_k: int = 5) -> str:
         )
         container.storage.save_manifest(manifest_entry)
 
+        pages.append({"url": url, "title": title, "text": truncate_at_sentence_end(text)})
+
+    # 4. If no page could be fetched, return LLM-friendly error
+    if fetched_count == 0:
+        total_time_ms = int((time.monotonic() - total_start) * 1000)
+        logger.warning(
+            "tool=crawl query=%s top_k=%d status=all_fetch_failed elapsed_ms=%d",
+            query, top_k, total_time_ms,
+        )
+        return (
+            "CRAWLER_UNAVAILABLE: Crawler is currently unable to fetch any pages. "
+            "The website(s) may be unreachable, blocking requests, or the fetch engine "
+            "is experiencing connectivity issues. Try again later or use a different query."
+        )
+
+    # 5. Build text content response
+    parts: list[str] = []
+    for page in pages:
+        header = f"## {page['title']}\nSource: {page['url']}"
+        content_body = page["text"] if page["text"] else "(No extractable text content)"
+        parts.append(f"{header}\n\n{content_body}")
+
+    result_text = "\n\n---\n\n".join(parts)
+
     total_time_ms = int((time.monotonic() - total_start) * 1000)
-    content = (
-        f"**Результат crawl по запросу «{query}»:**\n\n"
-        f"Найдено ссылок: {len(results)}\n"
-        f"Успешно загружено: {fetched_count}\n"
-        f"Извлечено контента: {successful_count}\n"
-        f"Объём текста: {total_text_bytes} байт\n"
-        f"Время выполнения: {total_time_ms} мс"
-    )
     logger.info(
-        "tool=crawl query=%s top_k=%d results=%d fetched=%d extracted=%d text_bytes=%d elapsed_ms=%d",
-        query, top_k, len(results), fetched_count, successful_count, total_text_bytes, total_time_ms,
+        "tool=crawl query=%s top_k=%d results=%d fetched=%d elapsed_ms=%d",
+        query, top_k, len(results), fetched_count, total_time_ms,
     )
-    return content
+    return json.dumps(pages, ensure_ascii=False)
 
 
 # ---------------------------------------------------------------------------
