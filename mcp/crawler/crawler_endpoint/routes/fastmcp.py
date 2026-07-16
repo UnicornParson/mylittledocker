@@ -55,27 +55,6 @@ def get_container() -> Container:
     return _container
 
 # ---------------------------------------------------------------------------
-# Pydantic models for tool arguments
-# ---------------------------------------------------------------------------
-
-
-class SearchArgs(BaseModel):
-    """Arguments for the search tool."""
-    query: str = Field(..., description="The search query string")
-    top_k: int = Field(10, ge=1, le=50, description="Number of results to return (1-50, default 10)")
-
-
-class FetchPageArgs(BaseModel):
-    """Arguments for the fetch_page tool."""
-    url: str = Field(..., description="The URL to fetch and extract")
-
-
-class CrawlArgs(BaseModel):
-    """Arguments for the crawl tool."""
-    query: str = Field(..., description="The search query string")
-    top_k: int = Field(5, ge=1, le=20, description="Number of results to process (1-20, default 5)")
-
-# ---------------------------------------------------------------------------
 # FastMCP Server
 # ---------------------------------------------------------------------------
 
@@ -91,14 +70,20 @@ mcp = FastMCP(
 
 # ---------------------------------------------------------------------------
 # Tool handlers
+# IMPORTANT: FastMCP generates correct MCP inputSchema only when tool
+# functions accept scalar parameters (not Pydantic BaseModel).
+# Using BaseModel args causes MCP clients to fail with "Field required" for 'args'.
 # ---------------------------------------------------------------------------
 
 
 @mcp.tool()
-async def search(args: SearchArgs) -> str:
+async def search(query: str, top_k: int = 10) -> str:
     """Search SearXNG and return results as a structured response."""
-    query = args.query
-    top_k = args.top_k
+    # Clamp top_k
+    if top_k < 1:
+        top_k = 1
+    if top_k > 50:
+        top_k = 50
 
     logger.info("tool=search query=%s top_k=%d", query, top_k)
     start = time.monotonic()
@@ -120,16 +105,16 @@ async def search(args: SearchArgs) -> str:
 
     return content
 
+
 @mcp.prompt()
 async def dummy_prompt() -> str:
     """Заглушка, чтобы клиент не ругался."""
     return ""
 
-@mcp.tool()
-async def fetch_page(args: FetchPageArgs) -> str:
-    """Fetch a single URL, extract content, save to disk, and return structured result."""
-    url = args.url
 
+@mcp.tool()
+async def fetch_page(url: str) -> str:
+    """Fetch a single URL, extract content, save to disk, and return structured result."""
     logger.info("tool=fetch_page url=%s", url)
     start = time.monotonic()
 
@@ -192,10 +177,13 @@ async def fetch_page(args: FetchPageArgs) -> str:
 
 
 @mcp.tool()
-async def crawl(args: CrawlArgs) -> str:
+async def crawl(query: str, top_k: int = 5) -> str:
     """Full pipeline: search → fetch all → extract all → save all."""
-    query = args.query
-    top_k = args.top_k
+    # Clamp top_k
+    if top_k < 1:
+        top_k = 1
+    if top_k > 20:
+        top_k = 20
 
     logger.info("tool=crawl query=%s top_k=%d", query, top_k)
     total_start = time.monotonic()
