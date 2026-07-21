@@ -1,22 +1,30 @@
 
 services:
-  fsext-mcp:
+  fsext-mcp-chat-agents:
     build: .
-    container_name: fsext-mcp
+    container_name: fsext-mcp-agents
     restart: unless-stopped
-
     ports:
       - "${MCP_PORT:-8107}:8000"
-
     volumes:
       - ${DATA_DIR:-./workspace}:/workspace
-
     user: "1000:1000"
-
     read_only: false
-
     security_opt:
       - no-new-privileges:true
-
+    cap_drop:
+      - ALL  
+  fsext-mcp-cline:
+    build: .
+    container_name: fsext-mcp-cline
+    restart: unless-stopped
+    ports:
+      - "${CLINE_MCP_PORT:-8107}:8000"
+    volumes:
+      - ${CLINE_DATA_DIR:-./workspace}:/workspace
+    user: "1000:1000"
+    read_only: false
+    security_opt:
+      - no-new-privileges:true
     cap_drop:
       - ALL
