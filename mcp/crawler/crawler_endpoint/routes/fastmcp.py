@@ -27,6 +27,61 @@ from crawler_endpoint.models import ManifestEntry, SearchResult
 
 
 OUTPUT_LIMIT = 100 * 1024 # 100kb
+
+# ---------------------------------------------------------------------------
+# Global statistics counters (module-level, survive across tool calls)
+# ---------------------------------------------------------------------------
+import threading
+
+_stats_lock = threading.Lock()
+_stats_fetch_engine_bytes: int = 0  # bytes fetched via fetch_engine
+_stats_total_bytes: int = 0         # total bytes fetched since startup
+
+
+def reset_stats() -> None:
+    """Reset statistics counters (useful for testing / manual reset)."""
+    global _stats_fetch_engine_bytes, _stats_total_bytes
+    with _stats_lock:
+        _stats_fetch_engine_bytes = 0
+        _stats_total_bytes = 0
+
+
+def record_fetch_engine_bytes(size: int) -> None:
+    """Record bytes fetched via fetch_engine."""
+    global _stats_fetch_engine_bytes, _stats_total_bytes
+    with _stats_lock:
+        _stats_fetch_engine_bytes += size
+        _stats_total_bytes += size
+
+
+def format_bytes(size: int) -> str:
+    """Format bytes into human-readable string (KB, MB, GB)."""
+    if size < 0:
+        return f"-{format_bytes(-size)}"
+    if size == 0:
+        return "0 B"
+    units = ["B", "KB", "MB", "GB", "TB"]
+    idx = 0
+    size_float = float(size)
+    while size_float >= 1024.0 and idx < len(units) - 1:
+        size_float /= 1024.0
+        idx += 1
+    # Show up to 2 decimal places, strip trailing zeros
+    if size_float == int(size_float):
+        return f"{int(size_float)} {units[idx]}"
+    return f"{size_float:.2f} {units[idx]}"
+
+
+def print_stats() -> None:
+    """Print fetch_engine and total statistics to console."""
+    with _stats_lock:
+        fe_bytes = _stats_fetch_engine_bytes
+        tot_bytes = _stats_total_bytes
+    fe_str = format_bytes(fe_bytes)
+    tot_str = format_bytes(tot_bytes)
+    logger.info("📊 Статистика fetch_engine: %s | Всего загружено: %s", fe_str, tot_str)
+
+
 # ---------------------------------------------------------------------------
 # Logger
 # ---------------------------------------------------------------------------
@@ -171,9 +226,15 @@ async def fetch_page(url: str) -> str:
         url, title, text_bytes, fetch_time_ms, elapsed_ms,
     )
 
+    # Record fetch_engine stats (raw_html size)
+    record_fetch_engine_bytes(len(raw_html.encode("utf-8")))
+
     # Build response
     snippet = text[:OUTPUT_LIMIT] + "…" if len(text) > OUTPUT_LIMIT else text
     content = f"**Страница:** {title or url}\n\n{snippet}"
+
+    # Print statistics to console
+    print_stats()
 
     return content
 
@@ -281,6 +342,15 @@ async def crawl(query: str, top_k: int = 5) -> str:
         "tool=crawl query=%s top_k=%d results=%d fetched=%d elapsed_ms=%d",
         query, top_k, len(results), fetched_count, total_time_ms,
     )
+
+    # Record fetch_engine stats for each fetched page (use raw HTML size)
+    for url, result in zip(urls, html_bodies):
+        if result is not None:
+            record_fetch_engine_bytes(len(result.encode("utf-8")))
+
+    # Print statistics to console
+    print_stats()
+
     return json.dumps(pages, ensure_ascii=False)
 
 
