@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import time
 from pathlib import Path
 from typing import List
@@ -24,22 +25,37 @@ from crawler_endpoint.models import ManifestEntry
 
 
 class StorageLayer:
-    """Persists crawled content to the local filesystem."""
+    """Persists crawled content to the local filesystem.
+
+    Saving is enabled only when the environment variable STORE_RESULTS is set
+    to the literal string ``1`` (case-sensitive).  When disabled all public
+    methods become no-ops and ``exists()`` always returns False.
+    """
 
     def __init__(self, settings: Settings) -> None:
         self._data_path = Path(settings.data_path)
         self._pages_dir = self._data_path / "pages"
         self._manifest_path = self._data_path / "manifest.json"
+        self._enabled: bool = os.environ.get("STORE_RESULTS") == "1"
 
     # ------------------------------------------------------------------
     # Public API
     # ------------------------------------------------------------------
 
+    @property
+    def is_enabled(self) -> bool:
+        """Return True if storage is enabled via STORE_RESULTS env var."""
+        return self._enabled
+
     def save_html(self, url: str, html: str) -> str:
         """Save raw HTML and return the full path.
 
         Path: /data/pages/<YYYY.MM.DD>/<sha256(url)>.<timestamp_ns>.html
+
+        Returns an empty string when storage is disabled.
         """
+        if not self._enabled:
+            return ""
         filepath = self._build_filepath(url, "html")
         filepath.parent.mkdir(parents=True, exist_ok=True)
         filepath.write_text(html, encoding="utf-8")
@@ -49,14 +65,24 @@ class StorageLayer:
         """Save extracted text and return the full path.
 
         Path: /data/pages/<YYYY.MM.DD>/<sha256(url)>.<timestamp_ns>.txt
+
+        Returns an empty string when storage is disabled.
         """
+        if not self._enabled:
+            return ""
         filepath = self._build_filepath(url, "txt")
         filepath.parent.mkdir(parents=True, exist_ok=True)
         filepath.write_text(text, encoding="utf-8")
         return str(filepath)
 
     def save_manifest(self, entry: ManifestEntry) -> None:
-        """Append a ManifestEntry to manifest.json."""
+        """Append a ManifestEntry to manifest.json.
+
+        No-op when storage is disabled.
+        """
+        if not self._enabled:
+            return
+
         entries: List[dict] = []
         if self._manifest_path.exists():
             raw = self._manifest_path.read_text(encoding="utf-8").strip()

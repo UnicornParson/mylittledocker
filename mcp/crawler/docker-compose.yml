@@ -59,6 +59,7 @@ services:
       - PLAYWRIGHT_ENABLED=true
       - SOCKS5_PROXY=${socks5_proxy:-}
       - MCP_HOST=0.0.0.0
+      - STORE_RESULTS=${STORE_RESULTS:-}
 
     volumes:
       - ${DATA_PATH}/crawler/data:/data

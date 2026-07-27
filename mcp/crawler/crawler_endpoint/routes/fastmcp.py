@@ -25,6 +25,8 @@ from mcp.server.transport_security import TransportSecuritySettings
 from crawler_endpoint.di import Container
 from crawler_endpoint.models import ManifestEntry, SearchResult
 
+
+OUTPUT_LIMIT = 100 * 1024 # 100kb
 # ---------------------------------------------------------------------------
 # Logger
 # ---------------------------------------------------------------------------
@@ -151,7 +153,7 @@ async def fetch_page(url: str) -> str:
         fetched_at=time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
         fetch_time_ms=fetch_time_ms,
         extracted_with="trafilatura/readability",
-        text_bytes=text_bytes,
+        text_bytes=len(text.encode("utf-8")),
     )
     container.storage.save_manifest(manifest_entry)
 
@@ -170,7 +172,7 @@ async def fetch_page(url: str) -> str:
     )
 
     # Build response
-    snippet = text[:500] + "…" if len(text) > 500 else text
+    snippet = text[:OUTPUT_LIMIT] + "…" if len(text) > OUTPUT_LIMIT else text
     content = f"**Страница:** {title or url}\n\n{snippet}"
 
     return content
@@ -250,7 +252,7 @@ async def crawl(query: str, top_k: int = 5) -> str:
         )
         container.storage.save_manifest(manifest_entry)
 
-        pages.append({"url": url, "title": title, "text": truncate_at_sentence_end(text)})
+        pages.append({"url": url, "title": title, "text": truncate_at_sentence_end(text, 4096)})
 
     # 4. If no page could be fetched, return LLM-friendly error
     if fetched_count == 0:
@@ -289,5 +291,3 @@ async def crawl(query: str, top_k: int = 5) -> str:
 appf = mcp.streamable_http_app()
 appf.user_middleware = []
 appf.add_middleware(TrustedHostMiddleware, allowed_hosts=["*"])
-
-print("222")

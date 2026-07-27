@@ -35,6 +35,8 @@ from starlette.responses import JSONResponse
 from crawler_endpoint.di import Container
 from crawler_endpoint.models import ManifestEntry, SearchResult
 
+OUTPUT_LIMIT = 100 * 1024 # 100kb
+
 # ---------------------------------------------------------------------------
 # Console logger for MCP tool calls
 # ---------------------------------------------------------------------------
@@ -243,7 +245,7 @@ async def _call_fetch_page(arguments: dict) -> list[TextContent]:
     )
 
     # Build response
-    snippet = text[:500] + "…" if len(text) > 500 else text
+    snippet = text[:OUTPUT_LIMIT] + "…" if len(text) > OUTPUT_LIMIT else text
     content = (
         f"**Страница:** {title or url}\n\n"
         f"{snippet}"
