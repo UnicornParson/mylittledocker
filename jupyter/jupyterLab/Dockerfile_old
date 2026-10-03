@@ -1,0 +1,104 @@
+FROM quay.io/jupyter/datascience-notebook:2025-12-31
+
+USER root
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get update && \
+    apt-get upgrade -y && \
+    apt-get install -y --no-install-recommends \
+        linux-libc-dev \
+        software-properties-common \
+        nano \
+        htop \
+        openssh-server \
+        curl \
+        perl \
+        libnet-ssleay-perl \
+        openssl \
+        libauthen-pam-perl \
+        libpam-runtime \
+        libio-pty-perl \
+        unzip \
+        gcc \
+        gawk \
+        g++ \
+        build-essential \
+        libcap-dev \
+        libxml2-dev \
+        libssl-dev \
+        net-tools \
+        git \
+        python3-psycopg2 \
+        pandoc \
+        texlive-xetex \
+        texlive-fonts-recommended \
+        texlive-plain-generic \
+        ffmpeg \
+        p7zip \
+        golang \
+        tesseract-ocr \
+        libsndfile1 \
+    && rm -rf /var/lib/apt/lists/*
+
+USER jovyan
+
+COPY --chown=jovyan:users .condarc /home/jovyan/.condarc
+
+RUN conda config --set solver libmamba && \
+    conda config --set channel_priority strict
+
+RUN conda install -y \
+        pip \
+        numpy \
+        tqdm \
+        pandas \
+        pympler \
+        numba \
+        tensorflow \
+        pytesseract \
+        matplotlib \
+        matplotlib-inline \
+        line_profiler \
+        pymongo \
+        nbconvert \
+        pyppeteer \
+        python-dotenv \
+        opencv \
+        tesseract \
+        keras \
+        scipy \
+        xgboost \
+        scikit-learn \
+        seaborn \
+        pyvis \
+        psycopg2 \
+        redis \
+        gstreamer \
+        gst-plugins-base \
+        gst-plugins-good \
+        gst-plugins-bad \
+        gst-plugins-ugly \
+        gst-libav \
+    && conda clean -afy
+
+RUN python -m pip install --no-cache-dir \
+        jycm \
+        ImageHash \
+        xmltodict \
+        reprint \
+        tabulate \
+        "imageio[ffmpeg]" \
+        jsonpickle \
+        humanize \
+        vosk \
+        deepspeech \
+        keras-ocr
+
+RUN python -m pip install --no-cache-dir \
+        torch \
+        torchvision \
+        torchaudio
+
+RUN fix-permissions "${CONDA_DIR}" && \
+    fix-permissions "/home/${NB_USER}"

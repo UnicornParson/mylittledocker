@@ -1,10 +1,10 @@
-version: '3.6'
+
 services:
   jupyter:
     restart: always
     build:
       context: '.'
-      dockerfile: "./Dockerfile"
+      dockerfile: "./Dockerfile26"
     ports:
       - '8090:8000'
       - '8091:8001'
