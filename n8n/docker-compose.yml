@@ -1,0 +1,18 @@
+services:
+  n8n:
+  
+    image: docker.n8n.io/n8nio/n8n
+    container_name: n8n
+    restart: always
+    user: "1000:1000"
+    ports:
+      - "5678:5678"
+    environment:
+      - N8N_HOST=${N8N_HOME:-localhost}
+      - N8N_PORT=5678
+      - WEBHOOK_URL=http://${N8N_HOME:-localhost}:5678/
+      - GENERIC_TIMEZONE=Europe/Moscow
+      - TZ=Europe/Moscow
+      - N8N_SECURE_COOKIE=false
+    volumes:
+      - ${N8N_HOME:-./n8n}:/home/node/.n8n
