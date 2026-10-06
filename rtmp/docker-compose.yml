@@ -1,4 +1,3 @@
-version: '3.6'
 services:
   rtmp_nginx:
     restart: always
@@ -6,8 +5,8 @@ services:
       context: '.'
       dockerfile: "./Dockerfile"
     ports:
-      - '1935:1935'
-      - '5050:5050'
+      - '9935:1935'
+      - '9050:5050'
     volumes:
       - '${RTMP_HOME}/live:/usr/share/nginx/html/hlslive'
       - '${RTMP_HOME}/log:/var/log/nginx/log'

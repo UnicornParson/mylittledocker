@@ -1,4 +1,4 @@
-FROM ubuntu:latest
+FROM ubuntu:26.04
 ## use
 ENV DEBIAN_FRONTEND=noninteractive
 

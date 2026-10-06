@@ -1,7 +1,7 @@
 # Ports
 
-- 1935 - rtmp port. url example: rtmp://{host}/hlslive/{streamName}
-- 5050 - {host}:5050/hlslive/{channel}.m3u8
+- 9935 - rtmp port. url example: rtmp://{host}/hlslive/{streamName}
+- 9050 - {host}:5050/hlslive/{channel}.m3u8
 
 # streams
 ## example
