@@ -1,0 +1,23 @@
+services:
+  duckduckgo-mcp:
+    image: ghcr.io/nickclyde/duckduckgo-mcp-server:latest
+    container_name: ddg-mcp-server
+    restart: unless-stopped
+    ports:
+      - "9051:8000"
+    # Переопределяем команду запуска для использования HTTP вместо stdio
+    command: 
+      - "--transport"
+      - "streamable-http"
+      - "--host"
+      - "0.0.0.0"
+      - "--port"
+      - "8000"
+      # Разрешаем запросы с localhost (необходимо для локальной разработки)
+      - "--disable-dns-rebinding-protection"
+    #environment:
+      # Раскомментируйте строки ниже и укажите свои данные, 
+      # если DuckDuckGo начнет блокировать или ограничивать ваш IP из России
+      # - HTTP_PROXY=http://user:password@proxy_ip:port
+      # - HTTPS_PROXY=http://user:password@proxy_ip:port
+      # - NO_PROXY=localhost,127.0.0.1
