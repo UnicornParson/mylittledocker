@@ -9,7 +9,7 @@ services:
     environment:
       - N8N_HOST=${N8N_HOME:-localhost}
       - N8N_PORT=5678
-      - WEBHOOK_URL=http://${N8N_HOME:-localhost}:5678/
+      - WEBHOOK_URL=http://${N8N_HOST:-localhost}:5678/
       - GENERIC_TIMEZONE=Europe/Moscow
       - TZ=Europe/Moscow
       - N8N_SECURE_COOKIE=false
