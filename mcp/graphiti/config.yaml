@@ -1,0 +1,22 @@
+server:
+  transport: "http"
+  host: "0.0.0.0"
+  port: 8000
+
+database:
+  provider: "falkordb"
+  providers:
+    falkordb:
+      uri: "redis://falkordb:6379"
+      database: "default_db"
+
+llm:
+  provider: "openai"
+  model: "qwen2.5-7b-instruct"
+  api_base: "http://host.docker.internal:1234/v1"
+  api_key: "lm-studio"
+  structured_output_mode: "json_object"
+
+embedder:
+  provider: "sentence_transformers"
+  model: "all-MiniLM-L6-v2"

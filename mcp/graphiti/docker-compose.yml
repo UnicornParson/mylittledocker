@@ -1,0 +1,25 @@
+services:
+  # Наша быстрая in-memory база данных
+  falkordb:
+    image: ghcr.io/falkordb/falkordb:latest
+    container_name: memory-graph-db
+    ports:
+      - "6379:6379"
+    volumes:
+      - ${FALKORDB_DATA}:/data
+    restart: unless-stopped
+
+  graphiti-mcp:
+    image: zepai/knowledge-graph-mcp:latest
+    ports:
+      - "${GRAPHITI_PORT}:8000"
+    volumes:
+      - ./config.yaml:/app/mcp_server/config.yaml
+    environment:
+      - FALKORDB_URL=redis://falkordb:6379
+      - GRAPHITI_CONFIG_PATH=/app/mcp_server/config.yaml
+      - OPENAI_API_KEY=lm-studio-local-key
+    extra_hosts:
+      - "host.docker.internal:host-gateway" # Позволяет контейнеру видеть LM Studio на хосте
+    depends_on:
+      - falkordb
