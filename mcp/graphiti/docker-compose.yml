@@ -20,6 +20,9 @@ services:
       - FALKORDB_URL=redis://falkordb:6379
       - GRAPHITI_CONFIG_PATH=/app/mcp_server/config.yaml
       - OPENAI_API_KEY=lm-studio-local-key
+      - OPENAI_API_URL=http://host.docker.internal:1234/v1
+      - MODEL_NAME=qwen2.5-7b-instruct
+      - GRAPHITI_TELEMETRY_ENABLED=false
     extra_hosts:
       - "host.docker.internal:host-gateway" # Позволяет контейнеру видеть LM Studio на хосте
     depends_on:

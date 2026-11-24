@@ -1,3 +1,4 @@
+
 server:
   transport: "http"
   host: "0.0.0.0"
@@ -13,9 +14,11 @@ database:
 llm:
   provider: "openai"
   model: "qwen2.5-7b-instruct"
-  api_base: "http://host.docker.internal:1234/v1"
-  api_key: "lm-studio"
   structured_output_mode: "json_object"
+  providers:
+    openai:
+      api_key: "lm-studio-local-key"
+      api_url: "http://host.docker.internal:1234/v1"
 
 embedder:
   provider: "sentence_transformers"
