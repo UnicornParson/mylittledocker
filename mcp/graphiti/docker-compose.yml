@@ -5,6 +5,7 @@ services:
     container_name: memory-graph-db
     ports:
       - "6379:6379"
+      - "${FALKORDB_BROWSER_PORT}:3000"
     volumes:
       - ${FALKORDB_DATA}:/data
     restart: unless-stopped
